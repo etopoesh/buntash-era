@@ -78,6 +78,17 @@ async function render(){
   const app = document.getElementById('app');
   if(!state){ app.innerHTML = '<div class="ui" style="color:#eee;text-align:center;padding:40px;">Загрузка...</div>'; return; }
 
+  if (!state.rods) {
+    state.rods = {};
+  } else {
+    Object.keys(state.rods).forEach(name => {
+      if (!state.rods[name]) state.rods[name] = {};
+      if (!state.rods[name].resources) state.rods[name].resources = defaultResources();
+      if (!state.rods[name].answers) state.rods[name].answers = {};
+      if (!state.rods[name].votes) state.rods[name].votes = {};
+    });
+  }
+
   const banner = errorBanner();
   if(!role){
     app.innerHTML = banner + landingScreen();
