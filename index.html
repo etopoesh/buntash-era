@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Бунташный век</title>
+<style>
+  :root{
+    --ink:#3B2A1B;
+    --ink-soft:#6B5642;
+    --parchment:#EFE3C8;
+    --parchment-dark:#E2D3AE;
+    --wood:#231B14;
+    --wood-2:#2F2318;
+    --wood-3:#3A2C1E;
+    --seal:#8C2A20;
+    --seal-dark:#6E2018;
+    --gold:#B8912E;
+    --gold-light:#D4B45A;
+    --green:#3F5741;
+    --green-dark:#2E4030;
+    --danger:#8C2A20;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--wood);
+    color:var(--ink);
+    font-family:Georgia,'Palatino Linotype','Times New Roman',serif;
+    min-height:100vh;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(184,145,46,0.06), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(140,42,32,0.08), transparent 40%);
+  }
+  .ui{font-family:'Segoe UI',Arial,Helvetica,sans-serif;}
+  #app{max-width:1100px;margin:0 auto;padding:24px 16px 60px;}
+
+  .center-screen{min-height:80vh;display:flex;align-items:center;justify-content:center;}
+  .landing-card{
+    background:var(--parchment);
+    border:1px solid var(--parchment-dark);
+    border-radius:6px;
+    padding:40px 36px;
+    max-width:440px;
+    width:100%;
+    text-align:center;
+    box-shadow:0 0 0 6px var(--wood-2), 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .crest{
+    width:56px;height:56px;margin:0 auto 18px;
+    border:2px solid var(--seal);
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--seal);font-size:26px;font-weight:bold;
+  }
+  h1.title{font-size:28px;margin:0 0 6px;letter-spacing:0.5px;color:var(--ink);}
+  .subtitle{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:var(--ink-soft);margin:0 0 28px;}
+  .role-btn{
+    display:block;width:100%;padding:14px 18px;margin-bottom:12px;
+    font-family:'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:600;
+    border-radius:4px;border:1px solid var(--seal);
+    background:var(--seal);color:var(--parchment);cursor:pointer;
+  }
+  .role-btn.secondary{background:transparent;color:var(--seal);}
+  .role-btn:active{transform:scale(0.99);}
+
+  input[type=text]{
+    width:100%;padding:11px 12px;font-family:'Segoe UI',Arial,sans-serif;font-size:15px;
+    border:1px solid var(--parchment-dark);border-radius:4px;background:#FBF6E9;color:var(--ink);
+    margin-bottom:10px;
+  }
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+  .chip{
+    font-family:'Segoe UI',Arial,sans-serif;font-size:13px;padding:7px 13px;border-radius:16px;
+    border:1px solid var(--gold);color:var(--gold);background:transparent;cursor:pointer;
+  }
+
+  .resource-bar{
+    display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;
+  }
+  .res-pill{
+    flex:1;min-width:100px;background:var(--parchment);border:1px solid var(--parchment-dark);
+    border-radius:6px;padding:10px 12px;text-align:center;
+  }
+  .res-pill .val{font-size:22px;font-weight:bold;color:var(--ink);}
+  .res-pill .lab{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:var(--ink-soft);margin-top:2px;}
+
+  .rod-header{
+    display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px;
+    color:var(--parchment);
+  }
+  .rod-header .name{font-size:22px;}
+  .rod-header button{
+    font-family:'Segoe UI',Arial,sans-serif;font-size:12px;background:none;border:1px solid var(--parchment-dark);
+    color:var(--parchment-dark);padding:5px 10px;border-radius:4px;cursor:pointer;
+  }
+
+  .event-card{
+    background:var(--parchment);border:1px solid var(--parchment-dark);border-radius:6px;
+    padding:24px;margin-bottom:16px;
+  }
+  .era-badge{
+    display:inline-block;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;
+    color:var(--ink-soft);margin-bottom:8px;
+  }
+  .type-badge{
+    display:inline-block;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;font-weight:600;
+    padding:3px 9px;border-radius:10px;margin-left:8px;vertical-align:middle;
+  }
+  .type-badge.normal{background:#E3E9DE;color:var(--green-dark);}
+  .type-badge.global{background:#F1DCC9;color:var(--seal-dark);}
+  .event-title{font-size:22px;margin:0 0 12px;}
+  .event-desc{font-size:16px;line-height:1.6;color:var(--ink);margin-bottom:20px;}
+
+  .choice-btn{
+    display:block;width:100%;text-align:left;padding:14px 16px;margin-bottom:10px;
+    font-family:'Segoe UI',Arial,sans-serif;font-size:15px;
+    background:#FBF6E9;border:1px solid var(--parchment-dark);border-radius:4px;color:var(--ink);
+    cursor:pointer;
+  }
+  .choice-btn:active{background:var(--parchment-dark);}
+
+  .outcome-box{
+    border-left:4px solid var(--seal);background:#F6ECD9;padding:14px 16px;border-radius:0 4px 4px 0;
+  }
+  .outcome-box .otitle{font-size:17px;font-weight:bold;margin-bottom:6px;color:var(--seal-dark);}
+  .outcome-box .otext{font-size:14px;line-height:1.55;margin-bottom:10px;}
+  .effect-line{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;}
+  .effect-line.pos{color:var(--green-dark);}
+  .effect-line.neg{color:var(--seal-dark);}
+
+  .waiting-box{
+    font-family:'Segoe UI',Arial,sans-serif;text-align:center;padding:24px 12px;color:var(--ink-soft);font-size:14px;
+  }
+
+  /* GM view */
+  .gm-grid{display:grid;grid-template-columns:300px 1fr;gap:18px;}
+  @media (max-width:800px){.gm-grid{grid-template-columns:1fr;}}
+  .gm-panel{background:var(--parchment);border:1px solid var(--parchment-dark);border-radius:6px;padding:16px;}
+  .gm-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .gm-nav button{
+    font-family:'Segoe UI',Arial,sans-serif;background:var(--seal);color:var(--parchment);border:none;
+    padding:8px 14px;border-radius:4px;cursor:pointer;font-size:13px;
+  }
+  .gm-nav button:disabled{opacity:0.35;}
+  .gm-nav .pos{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:var(--ink-soft);}
+
+  table.summary{width:100%;border-collapse:collapse;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;}
+  table.summary th{text-align:left;color:var(--ink-soft);font-weight:600;padding:6px 4px;border-bottom:1px solid var(--parchment-dark);font-size:11px;}
+  table.summary td{padding:7px 4px;border-bottom:1px solid var(--parchment-dark);}
+  table.summary tr.rod-row{cursor:pointer;}
+  table.summary tr.rod-row:active{background:var(--parchment-dark);}
+
+  .history-panel{
+    background:#FBF6E9;border:1px solid var(--parchment-dark);border-radius:4px;padding:10px 12px;margin:4px 0 12px;
+    font-family:'Segoe UI',Arial,sans-serif;font-size:12.5px;
+  }
+  .history-item{padding:6px 0;border-bottom:1px dashed var(--parchment-dark);}
+  .history-item:last-child{border-bottom:none;}
+  .history-item .h-event{font-weight:600;color:var(--ink);}
+  .history-item .h-choice{color:var(--ink-soft);}
+  .history-item .h-status{font-style:italic;color:var(--gold);}
+
+  .vote-row{display:flex;justify-content:space-between;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;padding:5px 0;border-bottom:1px solid var(--parchment-dark);}
+  .vote-tally{margin:12px 0;}
+  .reveal-btn{
+    width:100%;padding:13px;font-family:'Segoe UI',Arial,sans-serif;font-weight:600;font-size:14px;
+    background:var(--green);color:var(--parchment);border:none;border-radius:4px;cursor:pointer;margin-top:10px;
+  }
+  .reveal-btn:disabled{background:#9aa89b;cursor:default;}
+  .revealed-note{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:var(--green-dark);padding:10px 0;}
+
+  .top-link{
+    font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:var(--gold-light);cursor:pointer;
+    display:inline-block;margin-bottom:16px;
+  }
+  .small-note{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:var(--ink-soft);margin-top:4px;}
+</style>
+
+<!-- Модули облачного Firebase -->
+<script src="https://gstatic.com"></script>
+<script src="https://gstatic.com"></script>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const firebaseConfig = {
+  databaseURL: "https://firebaseio.com" 
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const GAME_EVENTS = [
+  {
+    id: 'salt',
+    type: 'global',
+    era: 'Царствование Алексея Михайловича, 1646 год',
+    title: 'Соляная пошлина',
+    description: 'Казна опустела после долгих войн. Боярин Морозов предлагает ввести высокую пошлину на соль. Народ ропщет, ведь соль необходима для хранения рыбы и мяса. Как ваш род проголосует на Земском соборе?',
+    choices: [
+      { text: 'Поддержать указ (Наполнить казну государя)', effects: { gold: 20, prestige: 10, troops: -10 } },
+      { text: 'Выступить против пошлины (Снискать любовь черни)', effects: { gold: -15, prestige: -10, troops: 15 } }
+    ]
+  },
+  {
+    id: 'copper',
+    type: 'normal',
+    era: 'Денежная реформа, 1662 год',
+    title: 'Медный бунт',
+    description: 'В оборот пущены медные деньги по цене серебряных. Из-за инфляции хлеб резко подорожал, а стрельцы и чернь готовы взбунтоваться. Как поступит ваш род?',
+    choices: [
+      { text: 'Платить стрельцам звонким серебром из запасов', effects: { gold: -30, prestige: 15, troops: 20 } },
+      { text: 'Скупить подешевевшие медные припасы у купцов', effects: { gold: 40, prestige: -15, troops: -15 } }
+    ]
+  }
+];
+
+let localState = {
+  view: 'landing', 
+  currentRodId: localStorage.getItem('buntash_my_rod_id') || null,
+  roomCode: 'MOSKVA'
+};
+
+let cloudState = {
+  currentEventIndex: 0,
+  votesRevealed: false,
+  rods: {}
+};
+
+function connectToCloud() {
+  db.ref('rooms/' + localState.roomCode).on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      cloudState.currentEventIndex = data.currentEventIndex || 0;
+      cloudState.votesRevealed = data.votesRevealed || false;
+      cloudState.rods = data.rods || {};
+    } else {
+      db.ref('rooms/' + localState.roomCode).set({
+        currentEventIndex: 0,
+        votesRevealed: false,
+        rods: {}
+      });
+    }
+    render();
+  });
+}
+
+function switchView(view) {
+  state.view = view;
+  render();
+}
+
+function createRod() {
+  const nameInput = document.getElementById('rod-name-input');
+  if (!nameInput || !nameInput.value.trim()) return alert('Назовите свой род!');
+  
+  const id = 'rod_' + Date.now();
+  state.currentRodId = id;
+  
+  db.ref('rooms/MOSKVA/rods/' + id).set({
+    name: nameInput.value.trim(),
+    gold: 50,
+    troops: 50,
+    prestige: 50,
+    choices: { init: true }
+  });
+
+  state.view = 'rod_dashboard';
+  render();
+}
+
+function makeChoice(eventId, choiceIndex) {
+  if (!state.currentRodId) return;
+  db.ref('rooms/MOSKVA/rods/' + state.currentRodId + '/choices/' + eventId).set(choiceIndex);
+}
+
+function revealVotes() {
+  db.ref('rooms/MOSKVA/votesRevealed').set(true);
+}
+
+function applyEffectsAndNext() {
+  const currentEvent = state.events[state.currentIndex];
+  
+  Object.keys(state.rods).forEach(id => {
+    const r = state.rods[id];
+    if (r.choices && r.choices[currentEvent.id] !== undefined) {
+      const choiceIdx = r.choices[currentEvent.id];
+      const eff = currentEvent.choices[choiceIdx].effects;
+      
+      db.ref('rooms/MOSKVA/rods/' + id).update({
+        gold: Math.max(0, (r.gold || 50) + eff.gold),
+        troops: Math.max(0, (r.troops || 50) + eff.troops),
+        prestige: Math.max(0, (r.prestige || 50) + eff.prestige)
+      });
+    }
+  });
+
+  db.ref('rooms/MOSKVA/votesRevealed').set(false);
+  if (state.currentIndex < state.events.length - 1) {
+    db.ref('rooms/MOSKVA/currentIndex').set(state.currentIndex + 1);
+  } else {
+    alert('Все указы Земского собора рассмотрены! Конец партии.');
+  }
+}
+
+function changeEvent(dir) {
+  const nextIdx = state.currentIndex + dir;
+  if (nextIdx >= 0 && nextIdx < state.events.length) {
+    db.ref('rooms/MOSKVA/currentIndex').set(nextIdx);
+    db.ref('rooms/MOSKVA/votesRevealed').set(false);
+  }
+}
