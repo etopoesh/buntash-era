@@ -398,17 +398,26 @@ function bindGmScreen(){
 }
 
 async function boot(){
-  const freshEvents = await loadEvents();
+  const freshEvents = await loadEvents(); // Сначала загружаем события из JSON
   
   stateRef.on('value', (snapshot) => {
     const data = snapshot.val();
     if (data) {
       state = data;
       state.events = freshEvents;
-      // Предохранитель от удаления пустого объекта базой данных Firebase
+      
+      // 1. Предохранитель для списка родов
       if (!state.rods) {
         state.rods = {};
+      } else {
+        // 2. Предохранитель для каждого рода: восстанавливаем пустые answers и votes, 
+        // если Firebase удалил их из-за пустоты.
+        Object.keys(state.rods).forEach(name => {
+          if (!state.rods[name].answers) state.rods[name].answers = {};
+          if (!state.rods[name].votes) state.rods[name].votes = {};
+        });
       }
+      
     } else {
       state = initialState();
       state.events = freshEvents;
