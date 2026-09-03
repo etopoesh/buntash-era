@@ -405,6 +405,10 @@ async function boot(){
     if (data) {
       state = data;
       state.events = freshEvents;
+      // Предохранитель от удаления пустого объекта базой данных Firebase
+      if (!state.rods) {
+        state.rods = {};
+      }
     } else {
       state = initialState();
       state.events = freshEvents;
