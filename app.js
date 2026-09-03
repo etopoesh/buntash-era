@@ -5,6 +5,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const stateRef = db.ref('buntash-state');
 
+
 function initialState(){
   return {
     currentIndex: 0,
@@ -13,7 +14,9 @@ function initialState(){
   };
 }
 
+
 function defaultResources(){ return {slava:10, krestyane:100, zoloto:50}; }
+
 
 async function saveState(s){
   try {
@@ -25,6 +28,7 @@ async function saveState(s){
   }
 }
 
+
 async function loadEvents() {
   try {
     const response = await fetch('events.json');
@@ -35,11 +39,13 @@ async function loadEvents() {
   }
 }
 
+
 let state = null;
 let role = null;
 let currentRod = null;
 let busy = false;
 let storageError = null;
+
 
 function fmtDelta(effect){
   const labels = {slava:'Слава', krestyane:'Крестьяне', zoloto:'Золото'};
@@ -52,11 +58,13 @@ function fmtDelta(effect){
   return parts.join(' &nbsp; ');
 }
 
+
 function applyEffect(res, effect){
   const out = {...res};
   for(const k in effect){ out[k] = (out[k]||0) + effect[k]; }
   return out;
 }
+
 
 function ensureRod(name){
   if(!state.rods[name]){
@@ -64,19 +72,26 @@ function ensureRod(name){
       resources: defaultResources(),
       answers: {},
       votes: {},
-      order: Object.keys(state.rods).length
+      order: Object.keys(state.rods).length,
+      progress: 0
     };
   }
 }
+
+
+let sortBy = 'slava'; // 'slava' | 'krestyane' | 'zoloto' — выбор ведущего для сортировки таблицы родов
+
 
 function errorBanner(){
   if(!storageError) return '';
   return `<div class="ui" style="background:#F0DCC9;color:#6E2018;border:1px solid #8C2A20;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;">${storageError}</div>`;
 }
 
+
 async function render(){
   const app = document.getElementById('app');
   if(!state){ app.innerHTML = '<div class="ui" style="color:#eee;text-align:center;padding:40px;">Загрузка...</div>'; return; }
+
 
   if (!state.rods) {
     state.rods = {};
@@ -86,8 +101,10 @@ async function render(){
       if (!state.rods[name].resources) state.rods[name].resources = defaultResources();
       if (!state.rods[name].answers) state.rods[name].answers = {};
       if (!state.rods[name].votes) state.rods[name].votes = {};
+      if (typeof state.rods[name].progress !== 'number') state.rods[name].progress = 0;
     });
   }
+
 
   const banner = errorBanner();
   if(!role){
@@ -111,22 +128,25 @@ async function render(){
   }
 }
 
+
 function landingScreen(){
   return `
   <div class="center-screen">
     <div class="landing-card">
       <div class="crest">Б</div>
       <h1 class="title">Бунташный век</h1>
-      <p class="subtitle">Ролевая игра для родов. Прототип каркаса.</p>
-      <button class="role-btn" id="btn-gm">Я — ведущий</button>
-      <button class="role-btn secondary" id="btn-rod">Я — род</button>
+      <p class="subtitle">Ролевая игра для родов</p>
+      <button class="role-btn" id="btn-rod">Начать игру</button>
     </div>
-  </div>`;
+  </div>
+  <button class="gm-tiny-link" id="btn-gm">ведущий</button>
+  <div class="school-footer">Школа 1576 «Праздники эпох»</div>`;
 }
 function bindLanding(){
   document.getElementById('btn-gm').onclick = ()=>{ role='gm'; render(); };
   document.getElementById('btn-rod').onclick = ()=>{ role='rod'; render(); };
 }
+
 
 function rodJoinScreen(){
   const existing = Object.keys(state.rods);
@@ -161,10 +181,17 @@ function bindRodJoin(){
   document.getElementById('btn-back-landing').onclick = ()=>{ role=null; render(); };
 }
 
+
 function rodScreen(){
   const rod = state.rods[currentRod];
-  const ev = state.events[state.currentIndex];
+  const idx = Math.min(rod.progress || 0, state.events.length - 1);
+  const ev = state.events[idx];
   const res = rod.resources;
+  const isLast = idx >= state.events.length - 1;
+  const nextBtnHtml = isLast
+    ? `<p class="small-note">Это было последнее событие — ждите продолжения.</p>`
+    : `<button class="choice-btn" id="btn-next-event">Далее →</button>`;
+
 
   let body = '';
   if(ev.type === 'normal'){
@@ -189,6 +216,7 @@ function rodScreen(){
             <div class="otext">${choice.outcomeText}</div>
             ${fmtDelta(choice.effect)}
           </div>
+          ${nextBtnHtml}
         </div>`;
     }
   } else {
@@ -209,6 +237,7 @@ function rodScreen(){
             <div class="otext">${out.narrative}</div>
             ${fmtDelta(personalEffect)}
           </div>
+          ${nextBtnHtml}
         </div>`;
     } else if(voted){
       body = `
@@ -229,6 +258,7 @@ function rodScreen(){
     }
   }
 
+
   return `
     <div class="rod-header">
       <span class="name">Род «${currentRod}»</span>
@@ -244,13 +274,14 @@ function rodScreen(){
 }
 function bindRodScreen(){
   document.getElementById('btn-leave').onclick = ()=>{ currentRod=null; render(); };
+  const rod = state.rods[currentRod];
+  const idx = Math.min(rod.progress || 0, state.events.length - 1);
   document.querySelectorAll('[data-key]').forEach(btn=>{
     btn.onclick = async ()=>{
       if(busy) return;
       busy = true;
-      const ev = state.events[state.currentIndex];
+      const ev = state.events[idx];
       const choice = ev.choices.find(c=>c.key===btn.dataset.key);
-      const rod = state.rods[currentRod];
       rod.answers[ev.id] = {choiceKey: choice.key};
       rod.resources = applyEffect(rod.resources, choice.effect);
       render();
@@ -262,42 +293,75 @@ function bindRodScreen(){
     btn.onclick = async ()=>{
       if(busy) return;
       busy = true;
-      const ev = state.events[state.currentIndex];
-      const rod = state.rods[currentRod];
+      const ev = state.events[idx];
       rod.votes[ev.id] = btn.dataset.voteKey;
       render();
       await saveState(state);
       busy = false;
     };
   });
+  const nextBtn = document.getElementById('btn-next-event');
+  if(nextBtn){
+    nextBtn.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      if(rod.progress < state.events.length - 1) rod.progress++;
+      render();
+      await saveState(state);
+      busy = false;
+    };
+  }
 }
+
 
 function gmScreen(){
   const ev = state.events[state.currentIndex];
-  const rodNames = Object.keys(state.rods).sort((a,b)=> state.rods[a].order - state.rods[b].order);
+  const allRodNames = Object.keys(state.rods);
+  const rodNames = allRodNames.slice().sort((a,b)=> state.rods[b].resources[sortBy] - state.rods[a].resources[sortBy]);
 
-  const summaryRows = rodNames.map(name=>{
+
+  const sortLabels = {slava:'Слава', krestyane:'Крестьяне', zoloto:'Золото'};
+  const sortTabs = `
+    <div class="sort-tabs">
+      ${Object.keys(sortLabels).map(k=>`<button data-sort="${k}" class="${sortBy===k?'active':''}">${sortLabels[k]}</button>`).join('')}
+    </div>`;
+
+
+  const summaryRows = rodNames.map((name,i)=>{
     const r = state.rods[name];
     return `<tr class="rod-row" data-rod="${name}">
-      <td>${name}</td><td>${r.resources.slava}</td><td>${r.resources.krestyane}</td><td>${r.resources.zoloto}</td>
+      <td>${i+1}</td><td>${name}</td><td>${r.resources.slava}</td><td>${r.resources.krestyane}</td><td>${r.resources.zoloto}</td>
     </tr>`;
   }).join('');
 
+
+  const timeline = state.events.map((e,i)=>{
+    const done = e.type === 'normal'
+      ? allRodNames.filter(n=>state.rods[n].answers[e.id]).length
+      : allRodNames.filter(n=>state.rods[n].votes[e.id]).length;
+    return `<div class="tl-item ${i===state.currentIndex?'active':''}" data-jump="${i}">
+      <div class="tl-dot"></div>
+      <div class="tl-title">${e.title}</div>
+      <div class="tl-count">${done}/${allRodNames.length}</div>
+    </div>`;
+  }).join('');
+
+
   let rightPanel = '';
   if(ev.type === 'normal'){
-    const answeredCount = rodNames.filter(n=>state.rods[n].answers[ev.id]).length;
+    const answeredCount = allRodNames.filter(n=>state.rods[n].answers[ev.id]).length;
     rightPanel = `
       <span class="era-badge">${ev.era}</span><span class="type-badge normal">Обычное</span>
       <h2 class="event-title">${ev.title}</h2>
       <p class="event-desc">${ev.description}</p>
-      <p class="ui" style="font-size:13px;color:var(--ink-soft);">Ответили: ${answeredCount} из ${rodNames.length} родов</p>
+      <p class="ui" style="font-size:13px;color:var(--ink-soft);">Ответили: ${answeredCount} из ${allRodNames.length} родов</p>
     `;
   } else {
-    const votes = ev.revealResult ? null : rodNames.map(n=>({name:n, key: state.rods[n].votes[ev.id]}));
     const tally = {};
     ev.choices.forEach(c=>tally[c.key]=0);
-    rodNames.forEach(n=>{ const v = state.rods[n].votes[ev.id]; if(v) tally[v]++; });
-    const notVoted = rodNames.filter(n=>!state.rods[n].votes[ev.id]);
+    allRodNames.forEach(n=>{ const v = state.rods[n].votes[ev.id]; if(v) tally[v]++; });
+    const notVoted = allRodNames.filter(n=>!state.rods[n].votes[ev.id]);
+
 
     rightPanel = `
       <span class="era-badge">${ev.era}</span><span class="type-badge global">Глобальное</span>
@@ -314,11 +378,13 @@ function gmScreen(){
     `;
   }
 
+
   return `
     <div class="rod-header">
       <span class="name">Панель ведущего</span>
       <button id="btn-leave-gm">выйти</button>
     </div>
+    <div class="timeline">${timeline}</div>
     <div class="gm-grid">
       <div class="gm-panel">
         <div class="gm-nav">
@@ -326,9 +392,10 @@ function gmScreen(){
           <span class="pos ui">Событие ${state.currentIndex+1} / ${state.events.length}</span>
           <button id="btn-next" ${state.currentIndex===state.events.length-1?'disabled':''}>след. →</button>
         </div>
+        ${sortTabs}
         <table class="summary">
-          <tr><th>Род</th><th>Слава</th><th>Крест.</th><th>Золото</th></tr>
-          ${summaryRows || '<tr><td colspan="4" style="color:var(--ink-soft);padding:10px 0;">Ещё никто не присоединился</td></tr>'}
+          <tr><th>#</th><th>Род</th><th>Слава</th><th>Крест.</th><th>Золото</th></tr>
+          ${summaryRows || '<tr><td colspan="5" style="color:var(--ink-soft);padding:10px 0;">Ещё никто не присоединился</td></tr>'}
         </table>
         <div id="history-slot"></div>
         <button class="reveal-btn" style="background:var(--seal);margin-top:16px;" id="btn-reset">Сбросить игру</button>
@@ -339,6 +406,19 @@ function gmScreen(){
 }
 function bindGmScreen(){
   document.getElementById('btn-leave-gm').onclick = ()=>{ role=null; render(); };
+  document.querySelectorAll('.sort-tabs button').forEach(btn=>{
+    btn.onclick = ()=>{ sortBy = btn.dataset.sort; render(); };
+  });
+  document.querySelectorAll('.tl-item').forEach(item=>{
+    item.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      state.currentIndex = parseInt(item.dataset.jump, 10);
+      render();
+      await saveState(state);
+      busy = false;
+    };
+  });
   document.getElementById('btn-prev').onclick = async ()=>{
     if(busy || state.currentIndex<=0) return;
     busy = true;
@@ -408,6 +488,7 @@ function bindGmScreen(){
   });
 }
 
+
 async function boot(){
   const freshEvents = await loadEvents(); // Сначала загружаем события из JSON
   
@@ -426,6 +507,7 @@ async function boot(){
         Object.keys(state.rods).forEach(name => {
           if (!state.rods[name].answers) state.rods[name].answers = {};
           if (!state.rods[name].votes) state.rods[name].votes = {};
+          if (typeof state.rods[name].progress !== 'number') state.rods[name].progress = 0;
         });
       }
       
