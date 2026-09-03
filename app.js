@@ -10,7 +10,8 @@ function initialState(){
   return {
     currentIndex: 0,
     events: [],
-    rods: {}
+    rods: {},
+    globalResults: {}
   };
 }
 
@@ -93,6 +94,7 @@ async function render(){
   if(!state){ app.innerHTML = '<div class="ui" style="color:#eee;text-align:center;padding:40px;">Загрузка...</div>'; return; }
 
 
+  if (!state.globalResults) state.globalResults = {};
   if (!state.rods) {
     state.rods = {};
   } else {
@@ -221,7 +223,7 @@ function rodScreen(){
     }
   } else {
     const voted = rod.votes[ev.id];
-    const revealed = ev.revealResult;
+    const revealed = state.globalResults[ev.id];
     if(revealed){
       const out = ev.outcomes[revealed.majorityKey];
       const wasMajority = voted === revealed.majorityKey;
@@ -371,8 +373,8 @@ function gmScreen(){
         ${ev.choices.map(c=>`<div class="vote-row"><span>${c.label}</span><span>${tally[c.key]}</span></div>`).join('')}
       </div>
       ${notVoted.length ? `<p class="small-note">Ещё не проголосовали: ${notVoted.join(', ')}</p>` : `<p class="small-note">Все рода проголосовали.</p>`}
-      ${ev.revealResult
-        ? `<div class="revealed-note">Итоги оглашены: победил вариант «${ev.choices.find(c=>c.key===ev.revealResult.majorityKey)?.label}».<br>${ev.outcomes[ev.revealResult.majorityKey].narrative}</div>`
+      ${state.globalResults[ev.id]
+        ? `<div class="revealed-note">Итоги оглашены: победил вариант «${ev.choices.find(c=>c.key===state.globalResults[ev.id].majorityKey)?.label}».<br>${ev.outcomes[state.globalResults[ev.id].majorityKey].narrative}</div>`
         : `<button class="reveal-btn" id="btn-reveal">Огласить итоги (после Земского собора)</button>`
       }
     `;
@@ -442,7 +444,7 @@ function bindGmScreen(){
       let majorityKey = ev.choices[0].key;
       let max = -1;
       ev.choices.forEach(c=>{ if(tally[c.key] > max){ max = tally[c.key]; majorityKey = c.key; } });
-      ev.revealResult = {majorityKey};
+      state.globalResults[ev.id] = {majorityKey};
       const out = ev.outcomes[majorityKey];
       rodNames.forEach(n=>{
         const rod = state.rods[n];
@@ -479,7 +481,7 @@ function bindGmScreen(){
           const v = rod.votes[ev.id];
           if(!v) return `<div class="history-item"><span class="h-event">${ev.title}</span> — <span class="h-status">ещё не голосовал</span></div>`;
           const choice = ev.choices.find(c=>c.key===v);
-          const status = ev.revealResult ? '(итоги оглашены)' : '(ждёт Земского собора)';
+          const status = state.globalResults[ev.id] ? '(итоги оглашены)' : '(ждёт Земского собора)';
           return `<div class="history-item"><span class="h-event">${ev.title}</span>: <span class="h-choice">${choice.label}</span> <span class="h-status">${status}</span></div>`;
         }
       }).join('');
@@ -497,7 +499,9 @@ async function boot(){
     if (data) {
       state = data;
       state.events = freshEvents;
-      
+      if (!state.globalResults) state.globalResults = {};
+
+
       // 1. Предохранитель для списка родов
       if (!state.rods) {
         state.rods = {};
