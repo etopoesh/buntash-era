@@ -11,14 +11,6 @@ function defaultResources() {
   return { slava: 10, krestyane: 100, zoloto: 50 };
 }
 
-let state = null;
-let role = null;
-let currentRod = null;
-let busy = false;
-let storageError = null;
-let sortBy = 'slava'; // 'slava' | 'krestyane' | 'zoloto' — выбор ведущего для сортировки таблицы родов
-let selectedEstate = null;
-
 function fmtDelta(effect) {
   const labels = { slava: 'Слава', krestyane: 'Крестьяне', zoloto: 'Золото' };
   const parts = [];
