@@ -53,7 +53,6 @@
     ${revealBanner}
     ${body}
   `;
-}
 
 function bindRodScreen() {
   document.getElementById('btn-leave').onclick = () => {
