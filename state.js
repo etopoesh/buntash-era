@@ -53,7 +53,6 @@ function errorBanner(){
   return <div class="ui" style="background:#F0DCC9;color:#6E2018;border:1px solid #8C2A20;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;">${storageError}</div>;
 }
 
-// Предохранитель: приводит объект рода к полной форме (используется и в render(), и в boot())
 function patchRod(rod){
   if (!rod.resources) rod.resources = defaultResources();
   if (!rod.answers) rod.answers = {};
@@ -63,3 +62,4 @@ function patchRod(rod){
   if (!rod.estate) rod.estate = 'dvoryane';
   return rod;
 }
+
