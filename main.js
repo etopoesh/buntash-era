@@ -3,6 +3,7 @@ async function render(){
   if(!state){ app.innerHTML = '<div class="ui" style="color:#eee;text-align:center;padding:40px;">Загрузка...</div>'; return; }
 
   if (!state.globalResults) state.globalResults = {};
+  if (!state.auctions) state.auctions = {};
   if (!state.rods) {
     state.rods = {};
   } else {
@@ -43,6 +44,7 @@ async function boot(){
       state = data;
       state.events = freshEvents;
       if (!state.globalResults) state.globalResults = {};
+      if (!state.auctions) state.auctions = {};
 
       // Предохранитель для списка родов
       if (!state.rods) {
