@@ -67,7 +67,7 @@ function applyEffect(res, effect){
 }
 
 
-function ensureRod(name){
+function ensureRod(name, estate){
   if(!state.rods[name]){
     state.rods[name] = {
       resources: defaultResources(),
@@ -75,7 +75,8 @@ function ensureRod(name){
       votes: {},
       seenReveal: {},
       order: Object.keys(state.rods).length,
-      progress: 0
+      progress: 0,
+      estate: estate || 'dvoryane'
     };
   }
 }
@@ -106,6 +107,7 @@ async function render(){
       if (!state.rods[name].votes) state.rods[name].votes = {};
       if (!state.rods[name].seenReveal) state.rods[name].seenReveal = {};
       if (typeof state.rods[name].progress !== 'number') state.rods[name].progress = 0;
+      if (!state.rods[name].estate) state.rods[name].estate = 'dvoryane';
     });
   }
 
@@ -135,15 +137,15 @@ async function render(){
 
 function landingScreen(){
   return `
+  <button class="gm-tiny-link" id="btn-gm">вход для мастера игры</button>
   <div class="center-screen">
     <div class="landing-card">
       <div class="crest">Б</div>
       <h1 class="title">Бунташный век</h1>
-      <p class="subtitle">Ролевая игра для родов</p>
+      <p class="subtitle">Ролевая игра для 7х классов</p>
       <button class="role-btn" id="btn-rod">Начать игру</button>
     </div>
   </div>
-  <button class="gm-tiny-link" id="btn-gm">ведущий</button>
   <div class="school-footer">Школа 1576 «Праздники эпох»</div>`;
 }
 function bindLanding(){
@@ -152,15 +154,21 @@ function bindLanding(){
 }
 
 
+let selectedEstate = null;
+
+
 function rodJoinScreen(){
   const existing = Object.keys(state.rods);
   return `
   <div class="center-screen">
     <div class="landing-card">
       <div class="crest">Р</div>
-      <h1 class="title" style="font-size:22px;">Назовите свой род</h1>
-      <p class="subtitle">Впишите название или выберите уже созданный род</p>
+      <h1 class="title" style="font-size:22px;">Впишите свой род в эпоху</h1>
       <input type="text" id="rod-name-input" placeholder="Например: Волковы">
+      <div class="estate-row">
+        <button class="estate-btn" data-estate="boyare">Бояре</button>
+        <button class="estate-btn" data-estate="dvoryane">Дворяне</button>
+      </div>
       <button class="role-btn" id="btn-join">Войти в игру</button>
       ${existing.length ? `<div class="chip-row" id="chip-row">${existing.map(n=>`<button class="chip" data-name="${n}">${n}</button>`).join('')}</div>` : ''}
       <div class="top-link" id="btn-back-landing" style="margin-top:14px;">← назад</div>
@@ -168,10 +176,19 @@ function rodJoinScreen(){
   </div>`;
 }
 function bindRodJoin(){
+  selectedEstate = null;
+  document.querySelectorAll('.estate-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      selectedEstate = btn.dataset.estate;
+      document.querySelectorAll('.estate-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+  });
   document.getElementById('btn-join').onclick = async ()=>{
     const val = document.getElementById('rod-name-input').value.trim();
     if(!val) return;
-    ensureRod(val);
+    if(!selectedEstate){ alert('Выберите сословие: Бояре или Дворяне'); return; }
+    ensureRod(val, selectedEstate);
     await saveState(state);
     currentRod = val;
     render();
@@ -254,8 +271,8 @@ function rodScreen(){
 
   return `
     <div class="rod-header">
-      <span class="name">Род «${currentRod}»</span>
-      <button id="btn-leave">сменить род</button>
+      <span class="name">${rod.estate === 'boyare' ? 'Боярский' : 'Дворянский'} род «${currentRod}»</span>
+      <button id="btn-leave">перейти к выбору рода</button>
     </div>
     <div class="resource-bar">
       <div class="res-pill"><div class="val">${res.slava}</div><div class="lab">Слава</div></div>
@@ -509,6 +526,7 @@ async function boot(){
           if (!state.rods[name].votes) state.rods[name].votes = {};
           if (!state.rods[name].seenReveal) state.rods[name].seenReveal = {};
           if (typeof state.rods[name].progress !== 'number') state.rods[name].progress = 0;
+          if (!state.rods[name].estate) state.rods[name].estate = 'dvoryane';
         });
       }
       
