@@ -92,40 +92,125 @@ function rodScreen(){
       </div>`;
   }
 
-  const answered = ev.type === 'normal' ? rod.answers[ev.id] : (rod.votes[ev.id] ? {choiceKey: rod.votes[ev.id]} : null);
-  const typeLabel = ev.type === 'normal' ? 'Обычное событие' : 'Глобальное событие';
-  const typeClass = ev.type === 'normal' ? 'normal' : 'global';
+  // Панель истории — что род уже выбирал раньше и к чему это привело
+  const historyToggle = `<button class="top-link" id="btn-toggle-history">${showHistory ? 'Скрыть историю ▲' : 'История выборов ▼'}</button>`;
+  let historyPanel = '';
+  if(showHistory){
+    const items = state.events.slice(0, idx).map(e=>{
+      if(e.type === 'rumor'){
+        return `<div class="history-item"><span class="h-event">${e.title}</span> <span class="h-status">(слухи)</span></div>`;
+      }
+      if(e.type === 'auction'){
+        const auction = state.auctions[e.id];
+        const myBid = auction && auction.bids && auction.bids[currentRod];
+        let status = 'не участвовали';
+        if(auction && auction.winner){
+          status = auction.winner === currentRod ? `получили титул «${e.titleName}»` : 'проиграли торги';
+        } else if(myBid !== undefined){
+          status = 'ставка сделана, ждём итогов';
+        }
+        return `<div class="history-item"><span class="h-event">${e.title}</span>: <span class="h-choice">${status}</span></div>`;
+      }
+      const choiceKey = e.type === 'normal' ? (rod.answers[e.id] && rod.answers[e.id].choiceKey) : rod.votes[e.id];
+      if(!choiceKey) return `<div class="history-item"><span class="h-event">${e.title}</span> — <span class="h-status">пропущено</span></div>`;
+      const choice = e.choices.find(c=>c.key===choiceKey);
+      return `<div class="history-item"><span class="h-event">${e.title}</span>: <span class="h-choice">${choice ? choice.label : ''}</span></div>`;
+    }).join('');
+    historyPanel = `<div class="history-panel">${items || '<span class="small-note">Пока ничего не было</span>'}</div>`;
+  }
 
   let body = '';
-  if(!answered){
+  if(ev.type === 'rumor'){
     body = `
       <div class="event-card">
-        <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
+        <span class="era-badge">${ev.era || ''}</span><span class="type-badge rumor">Слухи</span>
         <h2 class="event-title">${ev.title}</h2>
-        <p class="event-desc">${ev.description}</p>
-        ${ev.choices.map(c=>`<button class="choice-btn" data-key="${c.key}">${c.label}</button>`).join('')}
-      </div>`;
-  } else {
-    const choice = ev.choices.find(c=>c.key===answered.choiceKey);
-    const waitNote = ev.type === 'global' ? `<p class="small-note">Итоги этого решения придут позже, на Земском соборе.</p>` : '';
-    body = `
-      <div class="event-card">
-        <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
-        <h2 class="event-title">${ev.title}</h2>
-        <p class="event-desc" style="opacity:0.75">Ваш выбор: ${choice ? choice.label : ''}</p>
-        <div class="outcome-box">
-          <div class="otitle">${choice.outcomeTitle}</div>
-          <div class="otext">${choice.outcomeText}</div>
-          ${fmtDelta(choice.effect)}
+        <div class="rumor-list">
+          ${(ev.items||[]).map(t=>`<p class="rumor-item">${t}</p>`).join('')}
         </div>
-        ${waitNote}
         ${nextBtnHtml}
       </div>`;
+  } else if(ev.type === 'auction'){
+    const auction = state.auctions[ev.id] || {round:1, bids:{}, tiedRods:null, winner:null};
+    if(auction.winner){
+      const won = auction.winner === currentRod;
+      body = `
+        <div class="event-card">
+          <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
+          <h2 class="event-title">${ev.title}</h2>
+          <div class="outcome-box">
+            <div class="otitle">${won ? `Ваш род получил титул «${ev.titleName}»!` : `Титул «${ev.titleName}» получил род «${auction.winner}»`}</div>
+            <div class="otext">${auction.narrative || ''}</div>
+          </div>
+          ${nextBtnHtml}
+        </div>`;
+    } else {
+      const eligible = auction.round === 1 || (auction.tiedRods && auction.tiedRods.includes(currentRod));
+      const alreadyBid = auction.bids[currentRod] !== undefined;
+      if(!eligible){
+        body = `
+          <div class="event-card">
+            <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
+            <h2 class="event-title">${ev.title}</h2>
+            <div class="waiting-box">Ваша ставка не победила в первом раунде. Торги продолжаются между другими родами — ждите итогов.</div>
+          </div>`;
+      } else if(alreadyBid){
+        body = `
+          <div class="event-card">
+            <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
+            <h2 class="event-title">${ev.title}</h2>
+            <div class="waiting-box">Ставка принята: ${auction.bids[currentRod]} золота. Ждите оглашения итогов.</div>
+          </div>`;
+      } else {
+        body = `
+          <div class="event-card">
+            <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
+            <h2 class="event-title">${ev.title}</h2>
+            <p class="event-desc">${ev.description}</p>
+            ${auction.round > 1 ? `<p class="small-note">Второй раунд: ваша ставка сравнялась с другим родом. Новая ставка — из оставшегося золота.</p>` : ''}
+            <div class="bid-row">
+              <input type="number" id="bid-input" min="0" max="${res.zoloto}" placeholder="Золота (макс. ${res.zoloto})">
+              <button class="choice-btn" id="btn-submit-bid">Сделать ставку</button>
+            </div>
+          </div>`;
+      }
+    }
+  } else {
+    const answered = ev.type === 'normal' ? rod.answers[ev.id] : (rod.votes[ev.id] ? {choiceKey: rod.votes[ev.id]} : null);
+    const typeLabel = ev.type === 'normal' ? 'Обычное событие' : 'Глобальное событие';
+    const typeClass = ev.type === 'normal' ? 'normal' : 'global';
+    if(!answered){
+      body = `
+        <div class="event-card">
+          <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
+          <h2 class="event-title">${ev.title}</h2>
+          <p class="event-desc">${ev.description}</p>
+          ${ev.choices.map(c=>`<button class="choice-btn" data-key="${c.key}">${c.label}</button>`).join('')}
+        </div>`;
+    } else {
+      const choice = ev.choices.find(c=>c.key===answered.choiceKey);
+      const waitNote = ev.type === 'global' ? `<p class="small-note">Итоги этого решения придут позже, на Земском соборе.</p>` : '';
+      body = `
+        <div class="event-card">
+          <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
+          <h2 class="event-title">${ev.title}</h2>
+          <p class="event-desc" style="opacity:0.75">Ваш выбор: ${choice ? choice.label : ''}</p>
+          <div class="outcome-box">
+            <div class="otitle">${choice.outcomeTitle}</div>
+            <div class="otext">${choice.outcomeText}</div>
+            ${fmtDelta(choice.effect)}
+          </div>
+          ${waitNote}
+          ${nextBtnHtml}
+        </div>`;
+    }
   }
+
+  const titleBadges = Object.values(rod.titles||{}).map(t=>`<span class="title-badge">${t}</span>`).join('');
 
   return `
     <div class="rod-header">
-      <span class="name">${rod.estate === 'boyare' ? 'Боярский' : 'Дворянский'} род «${currentRod}»</span>
+      <span class="name">${rod.estate === 'boyare' ? 'Боярский' : 'Дворянский'} род «${currentRod}» ${titleBadges}</span>
       <button id="btn-leave">перейти к выбору рода</button>
     </div>
     <div class="resource-bar">
@@ -133,6 +218,8 @@ function rodScreen(){
       <div class="res-pill"><div class="val">${res.krestyane}</div><div class="lab">Крестьяне</div></div>
       <div class="res-pill"><div class="val">${res.zoloto}</div><div class="lab">Золото</div></div>
     </div>
+    ${historyToggle}
+    ${historyPanel}
     ${revealBanner}
     ${body}
   `;
@@ -141,11 +228,14 @@ function bindRodScreen(){
   document.getElementById('btn-leave').onclick = ()=>{ currentRod=null; render(); };
   const rod = state.rods[currentRod];
   const idx = Math.min(rod.progress || 0, state.events.length - 1);
+  const ev = state.events[idx];
+
+  document.getElementById('btn-toggle-history').onclick = ()=>{ showHistory = !showHistory; render(); };
+
   document.querySelectorAll('[data-key]').forEach(btn=>{
     btn.onclick = async ()=>{
       if(busy) return;
       busy = true;
-      const ev = state.events[idx];
       const choice = ev.choices.find(c=>c.key===btn.dataset.key);
       if(ev.type === 'normal'){
         rod.answers[ev.id] = {choiceKey: choice.key};
@@ -165,6 +255,23 @@ function bindRodScreen(){
       if(busy) return;
       busy = true;
       rod.seenReveal[ackBtn.dataset.ev] = true;
+      render();
+      await saveState(state);
+      busy = false;
+    };
+  }
+  const bidBtn = document.getElementById('btn-submit-bid');
+  if(bidBtn){
+    bidBtn.onclick = async ()=>{
+      if(busy) return;
+      const input = document.getElementById('bid-input');
+      let amount = parseInt(input.value, 10);
+      if(isNaN(amount) || amount <= 0){ alert('Введите сумму ставки больше нуля'); return; }
+      if(amount > rod.resources.zoloto) amount = rod.resources.zoloto;
+      busy = true;
+      if(!state.auctions[ev.id]) state.auctions[ev.id] = {round:1, bids:{}, tiedRods:null, winner:null};
+      state.auctions[ev.id].bids[currentRod] = amount;
+      rod.resources = applyEffect(rod.resources, {zoloto: -amount});
       render();
       await saveState(state);
       busy = false;
