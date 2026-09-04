@@ -1,6 +1,10 @@
-let role = null;
-let currentRod = null;
-let busy = false;
+// main.js
+
+// Глобальные переменные объявляем БЕЗ let/const, если они могут быть объявлены где-то ещё,
+// либо оставляем только здесь и нигде больше.
+if (typeof role === 'undefined') var role = null;
+if (typeof currentRod === 'undefined') var currentRod = null;
+if (typeof busy === 'undefined') var busy = false;
 
 function landingScreen() {
   return `
@@ -86,19 +90,19 @@ function bindRodJoin() {
     const name = (input ? input.value.trim() : '').length > 0;
     createBtn.disabled = !(name && selectedEstate);
   }
-  checkReady(); // сразу проверить при загрузке экрана
+  checkReady();
 
   if (createBtn) {
     createBtn.onclick = async () => {
       const name = input.value.trim();
       if (!name || !selectedEstate) return;
-      
+
       if (typeof ensureRod === 'function') {
         ensureRod(name, selectedEstate);
       }
       currentRod = name;
       render();
-      
+
       if (typeof saveState === 'function' && typeof state === 'object') {
         await saveState(state);
       }
@@ -110,13 +114,11 @@ async function render() {
   const app = document.getElementById('app');
   if (!app) return;
 
-  // Если состояние ещё не загружено Firebase
   if (!state) {
     app.innerHTML = '<div class="ui" style="color:#eee;text-align:center;padding:40px;">Загрузка состояния...</div>';
     return;
   }
 
-  // Инициализация полей безопасности
   if (!state.globalResults) state.globalResults = {};
   if (!state.rods) state.rods = {};
 
@@ -125,23 +127,19 @@ async function render() {
     banner = errorBanner();
   }
 
-  // Логика экранов
   if (!role) {
-    // ГЛАВНЫЙ ЭКРАН
     app.innerHTML = banner + landingScreen();
     bindLanding();
     return;
   }
 
   if (role === 'rod' && !currentRod) {
-    // СОЗДАНИЕ РОДА
     app.innerHTML = banner + rodJoinScreen();
     bindRodJoin();
     return;
   }
 
   if (role === 'rod') {
-    // ИГРОВОЙ ЭКРАН РОДА
     if (typeof rodScreen === 'function') {
       app.innerHTML = banner + rodScreen();
       if (typeof bindRodScreen === 'function') bindRodScreen();
@@ -152,7 +150,6 @@ async function render() {
   }
 
   if (role === 'gm') {
-    // ЭКРАН ВЕДУЩЕГО
     if (typeof gmScreen === 'function') {
       app.innerHTML = banner + gmScreen();
       if (typeof bindGmScreen === 'function') bindGmScreen();
@@ -166,34 +163,27 @@ async function render() {
 }
 
 async function boot() {
-  // Сначала загружаем события из JSON (заглушка)
   const freshEvents = await loadEvents();
   if (!freshEvents || !Array.isArray(freshEvents)) {
     console.error('loadEvents вернул некорректные данные');
-    // Даже если нет событий, продолжаем, чтобы показать экраны
   }
 
-  // Слушаем Firebase
   if (stateRef) {
     stateRef.on('value', (snapshot) => {
       const data = snapshot.val();
 
       if (data) {
         state = { ...data };
-        // Если событий нет в базе, берём из JSON
         if (!state.events || !Array.isArray(state.events)) {
           state.events = freshEvents || [];
         }
         if (!state.globalResults) state.globalResults = {};
         if (!state.rods) state.rods = {};
       } else {
-        // База пуста — создаём начальное состояние
         state = initialState();
         state.events = freshEvents || [];
-        // stateRef.set(state); // Можно раскомментировать, чтобы создать базу
       }
 
-      // Теперь можно рендерить
       render();
     });
   } else {
@@ -201,5 +191,4 @@ async function boot() {
   }
 }
 
-// ЗАПУСК
 boot();
