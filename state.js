@@ -3,7 +3,8 @@ function initialState(){
     currentIndex: 0,
     events: [],
     rods: {},
-    globalResults: {}
+    globalResults: {},
+    auctions: {}
   };
 }
 
@@ -16,6 +17,7 @@ let busy = false;
 let storageError = null;
 let sortBy = 'slava'; // 'slava' | 'krestyane' | 'zoloto' — выбор ведущего для сортировки таблицы родов
 let selectedEstate = null;
+let showHistory = false; // переключатель "История выборов" на экране рода
 
 function fmtDelta(effect){
   const labels = {slava:'Слава', krestyane:'Крестьяне', zoloto:'Золото'};
@@ -43,7 +45,8 @@ function ensureRod(name, estate){
       seenReveal: {},
       order: Object.keys(state.rods).length,
       progress: 0,
-      estate: estate || 'dvoryane'
+      estate: estate || 'dvoryane',
+      titles: {}
     };
   }
 }
@@ -61,5 +64,6 @@ function patchRod(rod){
   if (!rod.seenReveal) rod.seenReveal = {};
   if (typeof rod.progress !== 'number') rod.progress = 0;
   if (!rod.estate) rod.estate = 'dvoryane';
+  if (!rod.titles) rod.titles = {};
   return rod;
 }
