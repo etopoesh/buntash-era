@@ -1,3 +1,33 @@
+function rodScreen() {
+  const rod = state.rods[currentRod];
+  const idx = Math.min(rod.progress || 0, state.events.length - 1);
+  const ev = state.events[idx];
+  const res = rod.resources;
+
+  // Баннер с раскрытыми итогами глобального события (если есть)
+  let revealBanner = '';
+  if (state.globalResults && state.globalResults[ev.id] && !rod.seenReveal[ev.id]) {
+    const result = state.globalResults[ev.id];
+    const majorityChoice = ev.choices.find(c => c.key === result.majorityKey);
+    const myVote = rod.votes[ev.id];
+    const outcome = ev.outcomes[result.majorityKey];
+    const myEffect = (outcome.effectByChoice && outcome.effectByChoice[myVote]) || {};
+    revealBanner = `
+      <div class="reveal-banner">
+        <strong>Итоги Земского собора</strong>
+        <p>Победил вариант: «${majorityChoice ? majorityChoice.label : ''}»</p>
+        <p>${outcome.narrative || ''}</p>
+        ${fmtDelta(myEffect)}
+        <button id="btn-ack-reveal" data-ev="${ev.id}">Понятно</button>
+      </div>
+    `;
+  }
+
+  // Кнопка «Дальше», если событие отвечено
+  const nextBtnHtml = rod.answers[ev.id]
+    ? `<button id="btn-next-event" class="next-btn">Дальше →</button>`
+    : '';
+
   const answered = ev.type === 'normal'
     ? rod.answers[ev.id]
     : (rod.votes[ev.id] ? { choiceKey: rod.votes[ev.id] } : null);
@@ -53,7 +83,7 @@
     ${revealBanner}
     ${body}
   `;
-  }
+}
 
 function bindRodScreen() {
   document.getElementById('btn-leave').onclick = () => {
@@ -108,3 +138,4 @@ function bindRodScreen() {
       busy = false;
     };
   }
+}
