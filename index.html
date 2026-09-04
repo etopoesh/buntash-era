@@ -1,25 +1,25 @@
-<!DOCTYPE html> 
-<html lang="ru"> 
-<head> 
-  <meta charset="UTF-8"> 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
-  <title>Бунташный век</title> 
-   
-  <!-- Подключаем оформление --> 
-  <link rel="stylesheet" href="style.css"> 
-   
-  <!-- Подключаем базы данных Firebase v8 --> 
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script> 
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script> 
-   
-  <!-- Подключаем движок игры (по частям, порядок важен) --> 
-  <script src="firebase-init.js" defer></script> 
-  <script src="game-state.js" defer></script> 
-  <script src="rod-view.js" defer></script> 
-  <script src="gm-view.js" defer></script> 
-  <script src="main.js" defer></script> 
-</head> 
-<body> 
-  <div id="app"></div> 
-</body> 
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Бунташный век</title>
+  
+  <!-- Подключаем оформление -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Подключаем базы данных Firebase v8 -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  
+  <!-- Подключаем движок игры (по частям, порядок важен) -->
+  <script src="firebase-init.js" defer></script>
+  <script src="state.js" defer></script>
+  <script src="view-rod.js" defer></script>
+  <script src="view-gm.js" defer></script>
+  <script src="main.js" defer></script>
+</head>
+<body>
+  <div id="app"></div>
+</body>
 </html>
