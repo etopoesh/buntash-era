@@ -108,4 +108,3 @@ function bindRodScreen() {
       busy = false;
     };
   }
-  
