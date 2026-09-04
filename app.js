@@ -73,6 +73,7 @@ function ensureRod(name){
       resources: defaultResources(),
       answers: {},
       votes: {},
+      seenReveal: {},
       order: Object.keys(state.rods).length,
       progress: 0
     };
@@ -103,6 +104,7 @@ async function render(){
       if (!state.rods[name].resources) state.rods[name].resources = defaultResources();
       if (!state.rods[name].answers) state.rods[name].answers = {};
       if (!state.rods[name].votes) state.rods[name].votes = {};
+      if (!state.rods[name].seenReveal) state.rods[name].seenReveal = {};
       if (typeof state.rods[name].progress !== 'number') state.rods[name].progress = 0;
     });
   }
@@ -195,69 +197,58 @@ function rodScreen(){
     : `<button class="choice-btn" id="btn-next-event">Далее →</button>`;
 
 
+  // Непоказанные итоги отложенных (глобальных) событий — не зависят от того, на каком событии род сейчас
+  const pendingEv = state.events.find(e => e.type === 'global' && rod.votes[e.id] && state.globalResults[e.id] && !rod.seenReveal[e.id]);
+  let revealBanner = '';
+  if(pendingEv){
+    const gr = state.globalResults[pendingEv.id];
+    const out = pendingEv.outcomes[gr.majorityKey];
+    const myChoice = rod.votes[pendingEv.id];
+    const personalEffect = (out.effectByChoice && out.effectByChoice[myChoice]) || {};
+    revealBanner = `
+      <div class="event-card">
+        <span class="type-badge global">Вести с Земского собора</span>
+        <h2 class="event-title">${pendingEv.title}</h2>
+        <div class="outcome-box">
+          <div class="otitle">Итоги решены</div>
+          <div class="otext">${out.narrative}</div>
+          ${fmtDelta(personalEffect)}
+        </div>
+        <button class="choice-btn" id="btn-ack-reveal" data-ev="${pendingEv.id}">Понятно</button>
+      </div>`;
+  }
+
+
+  const answered = ev.type === 'normal' ? rod.answers[ev.id] : (rod.votes[ev.id] ? {choiceKey: rod.votes[ev.id]} : null);
+  const typeLabel = ev.type === 'normal' ? 'Обычное событие' : 'Глобальное событие';
+  const typeClass = ev.type === 'normal' ? 'normal' : 'global';
+
+
   let body = '';
-  if(ev.type === 'normal'){
-    const answered = rod.answers[ev.id];
-    if(!answered){
-      body = `
-        <div class="event-card">
-          <span class="era-badge">${ev.era}</span><span class="type-badge normal">Обычное событие</span>
-          <h2 class="event-title">${ev.title}</h2>
-          <p class="event-desc">${ev.description}</p>
-          ${ev.choices.map(c=>`<button class="choice-btn" data-key="${c.key}">${c.label}</button>`).join('')}
-        </div>`;
-    } else {
-      const choice = ev.choices.find(c=>c.key===answered.choiceKey);
-      body = `
-        <div class="event-card">
-          <span class="era-badge">${ev.era}</span><span class="type-badge normal">Обычное событие</span>
-          <h2 class="event-title">${ev.title}</h2>
-          <p class="event-desc" style="opacity:0.75">Ваш выбор: ${choice ? choice.label : ''}</p>
-          <div class="outcome-box">
-            <div class="otitle">${choice.outcomeTitle}</div>
-            <div class="otext">${choice.outcomeText}</div>
-            ${fmtDelta(choice.effect)}
-          </div>
-          ${nextBtnHtml}
-        </div>`;
-    }
+  if(!answered){
+    body = `
+      <div class="event-card">
+        <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
+        <h2 class="event-title">${ev.title}</h2>
+        <p class="event-desc">${ev.description}</p>
+        ${ev.choices.map(c=>`<button class="choice-btn" data-key="${c.key}">${c.label}</button>`).join('')}
+      </div>`;
   } else {
-    const voted = rod.votes[ev.id];
-    const revealed = state.globalResults[ev.id];
-    if(revealed){
-      const out = ev.outcomes[revealed.majorityKey];
-      const wasMajority = voted === revealed.majorityKey;
-      let personalEffect = {...out.allEffect};
-      if(wasMajority){ for(const k in out.majorityVoterEffect){ personalEffect[k] = (personalEffect[k]||0) + out.majorityVoterEffect[k]; } }
-      body = `
-        <div class="event-card">
-          <span class="era-badge">${ev.era}</span><span class="type-badge global">Глобальное событие</span>
-          <h2 class="event-title">${ev.title}</h2>
-          <p class="event-desc" style="opacity:0.75">Ваш голос: ${ev.choices.find(c=>c.key===voted)?.label || '—'}</p>
-          <div class="outcome-box">
-            <div class="otitle">Итоги Земского собора</div>
-            <div class="otext">${out.narrative}</div>
-            ${fmtDelta(personalEffect)}
-          </div>
-          ${nextBtnHtml}
-        </div>`;
-    } else if(voted){
-      body = `
-        <div class="event-card">
-          <span class="era-badge">${ev.era}</span><span class="type-badge global">Глобальное событие</span>
-          <h2 class="event-title">${ev.title}</h2>
-          <p class="event-desc">${ev.description}</p>
-          <div class="waiting-box">Голос принят: «${ev.choices.find(c=>c.key===voted)?.label}».<br>Итоги будут оглашены после Земского собора.</div>
-        </div>`;
-    } else {
-      body = `
-        <div class="event-card">
-          <span class="era-badge">${ev.era}</span><span class="type-badge global">Глобальное событие</span>
-          <h2 class="event-title">${ev.title}</h2>
-          <p class="event-desc">${ev.description}</p>
-          ${ev.choices.map(c=>`<button class="choice-btn" data-vote-key="${c.key}">${c.label}</button>`).join('')}
-        </div>`;
-    }
+    const choice = ev.choices.find(c=>c.key===answered.choiceKey);
+    const waitNote = ev.type === 'global' ? `<p class="small-note">Итоги этого решения придут позже, на Земском соборе.</p>` : '';
+    body = `
+      <div class="event-card">
+        <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
+        <h2 class="event-title">${ev.title}</h2>
+        <p class="event-desc" style="opacity:0.75">Ваш выбор: ${choice ? choice.label : ''}</p>
+        <div class="outcome-box">
+          <div class="otitle">${choice.outcomeTitle}</div>
+          <div class="otext">${choice.outcomeText}</div>
+          ${fmtDelta(choice.effect)}
+        </div>
+        ${waitNote}
+        ${nextBtnHtml}
+      </div>`;
   }
 
 
@@ -271,6 +262,7 @@ function rodScreen(){
       <div class="res-pill"><div class="val">${res.krestyane}</div><div class="lab">Крестьяне</div></div>
       <div class="res-pill"><div class="val">${res.zoloto}</div><div class="lab">Золото</div></div>
     </div>
+    ${revealBanner}
     ${body}
   `;
 }
@@ -284,24 +276,29 @@ function bindRodScreen(){
       busy = true;
       const ev = state.events[idx];
       const choice = ev.choices.find(c=>c.key===btn.dataset.key);
-      rod.answers[ev.id] = {choiceKey: choice.key};
-      rod.resources = applyEffect(rod.resources, choice.effect);
+      if(ev.type === 'normal'){
+        rod.answers[ev.id] = {choiceKey: choice.key};
+      } else {
+        rod.votes[ev.id] = choice.key;
+        rod.answers[ev.id] = {choiceKey: choice.key};
+      }
+      rod.resources = applyEffect(rod.resources, choice.effect || {});
       render();
       await saveState(state);
       busy = false;
     };
   });
-  document.querySelectorAll('[data-vote-key]').forEach(btn=>{
-    btn.onclick = async ()=>{
+  const ackBtn = document.getElementById('btn-ack-reveal');
+  if(ackBtn){
+    ackBtn.onclick = async ()=>{
       if(busy) return;
       busy = true;
-      const ev = state.events[idx];
-      rod.votes[ev.id] = btn.dataset.voteKey;
+      rod.seenReveal[ackBtn.dataset.ev] = true;
       render();
       await saveState(state);
       busy = false;
     };
-  });
+  }
   const nextBtn = document.getElementById('btn-next-event');
   if(nextBtn){
     nextBtn.onclick = async ()=>{
@@ -448,10 +445,9 @@ function bindGmScreen(){
       const out = ev.outcomes[majorityKey];
       rodNames.forEach(n=>{
         const rod = state.rods[n];
-        rod.resources = applyEffect(rod.resources, out.allEffect);
-        if(rod.votes[ev.id] === majorityKey){
-          rod.resources = applyEffect(rod.resources, out.majorityVoterEffect);
-        }
+        const myChoice = rod.votes[ev.id];
+        const eff = (out.effectByChoice && out.effectByChoice[myChoice]) || {};
+        rod.resources = applyEffect(rod.resources, eff);
       });
       render();
       await saveState(state);
@@ -511,6 +507,7 @@ async function boot(){
         Object.keys(state.rods).forEach(name => {
           if (!state.rods[name].answers) state.rods[name].answers = {};
           if (!state.rods[name].votes) state.rods[name].votes = {};
+          if (!state.rods[name].seenReveal) state.rods[name].seenReveal = {};
           if (typeof state.rods[name].progress !== 'number') state.rods[name].progress = 0;
         });
       }
