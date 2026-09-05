@@ -71,6 +71,18 @@ function rodScreen(){
     ? `<p class="small-note">Это было последнее событие — ждите продолжения.</p>`
     : `<button class="choice-btn" id="btn-next-event">Далее →</button>`;
 
+  const titleBadges = Object.values(rod.titles||{}).map(t=>`<span class="title-badge">${t}</span>`).join('');
+  const header = `
+    <div class="rod-header">
+      <span class="name">${rod.estate === 'boyare' ? 'Боярский' : 'Дворянский'} род «${currentRod}» ${titleBadges}</span>
+      <button id="btn-leave">перейти к выбору рода</button>
+    </div>
+    <div class="resource-bar">
+      <div class="res-pill"><div class="val">${res.slava}</div><div class="lab">Слава</div></div>
+      <div class="res-pill"><div class="val">${res.krestyane}</div><div class="lab">Крестьяне</div></div>
+      <div class="res-pill"><div class="val">${res.zoloto}</div><div class="lab">Золото</div></div>
+    </div>`;
+
   // Непоказанные итоги отложенных (глобальных) событий — не зависят от того, на каком событии род сейчас
   const pendingEv = state.events.find(e => e.type === 'global' && rod.votes[e.id] && state.globalResults[e.id] && !rod.seenReveal[e.id]);
   let revealBanner = '';
@@ -92,14 +104,12 @@ function rodScreen(){
       </div>`;
   }
 
-  // Панель истории — что род уже выбирал раньше и к чему это привело
-  const historyToggle = `<button class="top-link" id="btn-toggle-history">${showHistory ? 'Скрыть историю ▲' : 'История выборов ▼'}</button>`;
+  // Панель истории — что род уже выбирал раньше и к чему это привело (без слухов, с датами)
+  const historyToggle = `<button class="top-link" id="btn-toggle-history">${showHistory ? 'Скрыть историю ▲' : 'История ▼'}</button>`;
   let historyPanel = '';
   if(showHistory){
     const items = state.events.slice(0, idx).map(e=>{
-      if(e.type === 'rumor'){
-        return `<div class="history-item"><span class="h-event">${e.title}</span> <span class="h-status">(слухи)</span></div>`;
-      }
+      const dateTag = `<span class="h-date">${e.era || ''}</span>`;
       if(e.type === 'auction'){
         const auction = state.auctions[e.id];
         const myBid = auction && auction.bids && auction.bids[currentRod];
@@ -109,28 +119,30 @@ function rodScreen(){
         } else if(myBid !== undefined){
           status = 'ставка сделана, ждём итогов';
         }
-        return `<div class="history-item"><span class="h-event">${e.title}</span>: <span class="h-choice">${status}</span></div>`;
+        return `<div class="history-item">${dateTag}<span class="h-event">${e.title}</span>: <span class="h-choice">${status}</span></div>`;
       }
       const choiceKey = e.type === 'normal' ? (rod.answers[e.id] && rod.answers[e.id].choiceKey) : rod.votes[e.id];
-      if(!choiceKey) return `<div class="history-item"><span class="h-event">${e.title}</span> — <span class="h-status">пропущено</span></div>`;
+      if(!choiceKey) return `<div class="history-item">${dateTag}<span class="h-event">${e.title}</span> — <span class="h-status">пропущено</span></div>`;
       const choice = e.choices.find(c=>c.key===choiceKey);
-      return `<div class="history-item"><span class="h-event">${e.title}</span>: <span class="h-choice">${choice ? choice.label : ''}</span></div>`;
+      return `<div class="history-item">${dateTag}<span class="h-event">${e.title}</span>: <span class="h-choice">${choice ? choice.label : ''}</span></div>`;
     }).join('');
     historyPanel = `<div class="history-panel">${items || '<span class="small-note">Пока ничего не было</span>'}</div>`;
   }
 
-  let body = '';
-  if(ev.type === 'rumor'){
-    body = `
+  // Слухи — необязательный переходный экран перед конкретным событием, показывается один раз
+  if(ev.rumors && ev.rumors.length && !rod.seenRumors[ev.id]){
+    const rumorBody = `
       <div class="event-card">
         <span class="era-badge">${ev.era || ''}</span><span class="type-badge rumor">Слухи</span>
-        <h2 class="event-title">${ev.title}</h2>
-        <div class="rumor-list">
-          ${(ev.items||[]).map(t=>`<p class="rumor-item">${t}</p>`).join('')}
-        </div>
-        ${nextBtnHtml}
+        <h2 class="event-title">Вести с земли</h2>
+        <div class="rumor-list">${ev.rumors.map(t=>`<p class="rumor-item">${t}</p>`).join('')}</div>
+        <button class="choice-btn" id="btn-rumor-continue" data-ev="${ev.id}">Далее →</button>
       </div>`;
-  } else if(ev.type === 'auction'){
+    return `${header}${historyToggle}${historyPanel}${rumorBody}`;
+  }
+
+  let body = '';
+  if(ev.type === 'auction'){
     const auction = state.auctions[ev.id] || {round:1, bids:{}, tiedRods:null, winner:null};
     if(auction.winner){
       const won = auction.winner === currentRod;
@@ -206,23 +218,7 @@ function rodScreen(){
     }
   }
 
-  const titleBadges = Object.values(rod.titles||{}).map(t=>`<span class="title-badge">${t}</span>`).join('');
-
-  return `
-    <div class="rod-header">
-      <span class="name">${rod.estate === 'boyare' ? 'Боярский' : 'Дворянский'} род «${currentRod}» ${titleBadges}</span>
-      <button id="btn-leave">перейти к выбору рода</button>
-    </div>
-    <div class="resource-bar">
-      <div class="res-pill"><div class="val">${res.slava}</div><div class="lab">Слава</div></div>
-      <div class="res-pill"><div class="val">${res.krestyane}</div><div class="lab">Крестьяне</div></div>
-      <div class="res-pill"><div class="val">${res.zoloto}</div><div class="lab">Золото</div></div>
-    </div>
-    ${historyToggle}
-    ${historyPanel}
-    ${revealBanner}
-    ${body}
-  `;
+  return `${header}${historyToggle}${historyPanel}${revealBanner}${body}`;
 }
 function bindRodScreen(){
   document.getElementById('btn-leave').onclick = ()=>{ currentRod=null; render(); };
@@ -231,6 +227,20 @@ function bindRodScreen(){
   const ev = state.events[idx];
 
   document.getElementById('btn-toggle-history').onclick = ()=>{ showHistory = !showHistory; render(); };
+
+  const rumorBtn = document.getElementById('btn-rumor-continue');
+  if(rumorBtn){
+    rumorBtn.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      if(!rod.seenRumors) rod.seenRumors = {};
+      rod.seenRumors[rumorBtn.dataset.ev] = true;
+      render();
+      await saveState(state);
+      busy = false;
+    };
+    return; // на экране слухов больше нечего привязывать
+  }
 
   document.querySelectorAll('[data-key]').forEach(btn=>{
     btn.onclick = async ()=>{
