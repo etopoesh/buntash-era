@@ -17,7 +17,7 @@ let busy = false;
 let storageError = null;
 let sortBy = 'slava'; // 'slava' | 'krestyane' | 'zoloto' — выбор ведущего для сортировки таблицы родов
 let selectedEstate = null;
-let showHistory = false; // переключатель "История выборов" на экране рода
+let showHistory = false; // переключатель "История" на экране рода
 
 function fmtDelta(effect){
   const labels = {slava:'Слава', krestyane:'Крестьяне', zoloto:'Золото'};
@@ -43,6 +43,7 @@ function ensureRod(name, estate){
       answers: {},
       votes: {},
       seenReveal: {},
+      seenRumors: {},
       order: Object.keys(state.rods).length,
       progress: 0,
       estate: estate || 'dvoryane',
@@ -62,6 +63,7 @@ function patchRod(rod){
   if (!rod.answers) rod.answers = {};
   if (!rod.votes) rod.votes = {};
   if (!rod.seenReveal) rod.seenReveal = {};
+  if (!rod.seenRumors) rod.seenRumors = {};
   if (typeof rod.progress !== 'number') rod.progress = 0;
   if (!rod.estate) rod.estate = 'dvoryane';
   if (!rod.titles) rod.titles = {};
