@@ -21,7 +21,6 @@ function gmScreen(){
     let done;
     if(e.type === 'normal') done = allRodNames.filter(n=>state.rods[n].answers[e.id]).length;
     else if(e.type === 'global') done = allRodNames.filter(n=>state.rods[n].votes[e.id]).length;
-    else if(e.type === 'rumor') done = allRodNames.filter(n=>(state.rods[n].progress||0) > i).length;
     else if(e.type === 'auction') done = (state.auctions[e.id] && state.auctions[e.id].winner) ? allRodNames.length : (state.auctions[e.id] ? Object.keys(state.auctions[e.id].bids).length : 0);
     return `<div class="tl-item ${i===state.currentIndex?'active':''}" data-jump="${i}">
       <div class="tl-dot"></div>
@@ -38,15 +37,6 @@ function gmScreen(){
       <h2 class="event-title">${ev.title}</h2>
       <p class="event-desc">${ev.description}</p>
       <p class="ui" style="font-size:13px;color:var(--ink-soft);">Ответили: ${answeredCount} из ${allRodNames.length} родов</p>
-    `;
-  } else if(ev.type === 'rumor'){
-    const idxEv = state.events.indexOf(ev);
-    const readCount = allRodNames.filter(n=>(state.rods[n].progress||0) > idxEv).length;
-    rightPanel = `
-      <span class="era-badge">${ev.era || ''}</span><span class="type-badge rumor">Слухи</span>
-      <h2 class="event-title">${ev.title}</h2>
-      <div class="rumor-list">${(ev.items||[]).map(t=>`<p class="rumor-item">${t}</p>`).join('')}</div>
-      <p class="small-note">Прочитали: ${readCount} из ${allRodNames.length} родов</p>
     `;
   } else if(ev.type === 'auction'){
     const auction = state.auctions[ev.id] || {round:1, bids:{}, tiedRods:null, winner:null};
@@ -216,9 +206,6 @@ function bindGmScreen(){
           if(!a) return `<div class="history-item"><span class="h-event">${ev.title}</span> — <span class="h-status">ещё не выбрано</span></div>`;
           const choice = ev.choices.find(c=>c.key===a.choiceKey);
           return `<div class="history-item"><span class="h-event">${ev.title}</span>: <span class="h-choice">${choice.label}</span></div>`;
-        } else if(ev.type==='rumor'){
-          const passed = (rod.progress||0) > state.events.indexOf(ev);
-          return `<div class="history-item"><span class="h-event">${ev.title}</span> — <span class="h-status">${passed ? 'прочитано' : 'ещё не дошли'}</span></div>`;
         } else if(ev.type==='auction'){
           const auction = state.auctions[ev.id];
           const bid = auction && auction.bids && auction.bids[name];
