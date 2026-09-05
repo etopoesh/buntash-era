@@ -159,9 +159,10 @@
   }
   .history-item{padding:6px 0;border-bottom:1px dashed var(--parchment-dark);}
   .history-item:last-child{border-bottom:none;}
+  .history-item .h-date{font-size:11px;color:var(--ink-soft);opacity:0.7;display:block;margin-bottom:1px;}
   .history-item .h-event{font-weight:600;color:var(--ink);}
   .history-item .h-choice{color:var(--ink-soft);}
-  .history-item .h-status{font-style:italic;color:var(--gold);}
+  .history-item .h-status{font-style:italic;color:var(--seal-dark);opacity:0.8;}
 
   .vote-row{display:flex;justify-content:space-between;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;padding:5px 0;border-bottom:1px solid var(--parchment-dark);}
   .vote-tally{margin:12px 0;}
@@ -236,7 +237,9 @@
     flex:1;padding:11px 12px;font-family:'Segoe UI',Arial,sans-serif;font-size:15px;
     border:1px solid var(--parchment-dark);border-radius:4px;background:#FBF6E9;color:var(--ink);
   }
-  .bid-row button{flex:0 0 auto;margin-bottom:0;}
+  .bid-row button{
+    display:inline-block; width:auto; flex:0 0 auto; white-space:nowrap; margin-bottom:0; padding:11px 16px;
+  }
 
   /* Бейдж титула */
   .title-badge{
