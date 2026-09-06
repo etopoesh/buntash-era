@@ -8,7 +8,10 @@ function initialState(){
   };
 }
 
-function defaultResources(){ return {slava:10, krestyane:100, zoloto:50}; }
+function defaultResources(estate){
+  if(estate === 'boyare') return {slava:30, krestyane:150, zoloto:40};
+  return {slava:10, krestyane:80, zoloto:60}; // dvoryane и запасной вариант
+}
 
 let state = null;
 let role = null;
@@ -19,27 +22,48 @@ let sortBy = 'slava'; // 'slava' | 'krestyane' | 'zoloto' — выбор вед�
 let selectedEstate = null;
 let showHistory = false; // переключатель "История" на экране рода
 
+// Крестьяне считаются в процентах от текущего числа (не могут уйти в минус),
+// деньги и слава — обычными числами (могут уйти в минус).
 function fmtDelta(effect){
-  const labels = {slava:'Слава', krestyane:'Крестьяне', zoloto:'Золото'};
+  const labels = {slava:'Слава', zoloto:'Золото'};
   const parts = [];
   for(const k in effect){
     if(!effect[k]) continue;
     const v = effect[k];
-    parts.push(`<span class="effect-line ${v>0?'pos':'neg'}">${v>0?'+':''}${v} ${labels[k]}</span>`);
+    if(k === 'krestyane'){
+      parts.push(`<span class="effect-line ${v>0?'pos':'neg'}">${v>0?'+':''}${v}% Крестьяне</span>`);
+    } else {
+      parts.push(`<span class="effect-line ${v>0?'pos':'neg'}">${v>0?'+':''}${v} ${labels[k]}</span>`);
+    }
   }
   return parts.join(' &nbsp; ');
 }
 
 function applyEffect(res, effect){
   const out = {...res};
-  for(const k in effect){ out[k] = (out[k]||0) + effect[k]; }
+  for(const k in effect){
+    if(k === 'krestyane'){
+      out.krestyane = Math.round(out.krestyane * (1 + effect.krestyane/100));
+    } else {
+      out[k] = (out[k]||0) + effect[k];
+    }
+  }
   return out;
+}
+
+// Скрытый параметр "Благоволение" — виден только ведущему, на ресурсы не влияет
+// автоматически. track — произвольная строка (например "tsar" или "godunov"),
+// значения по разным track накапливаются отдельно.
+function applyFavor(rod, favor){
+  if(!favor) return;
+  if(!rod.favor) rod.favor = {};
+  rod.favor[favor.track] = (rod.favor[favor.track] || 0) + favor.value;
 }
 
 function ensureRod(name, estate){
   if(!state.rods[name]){
     state.rods[name] = {
-      resources: defaultResources(),
+      resources: defaultResources(estate),
       answers: {},
       votes: {},
       seenReveal: {},
@@ -47,7 +71,8 @@ function ensureRod(name, estate){
       order: Object.keys(state.rods).length,
       progress: 0,
       estate: estate || 'dvoryane',
-      titles: {}
+      titles: {},
+      favor: {}
     };
   }
 }
@@ -59,7 +84,7 @@ function errorBanner(){
 
 // Предохранитель: приводит объект рода к полной форме (используется и в render(), и в boot())
 function patchRod(rod){
-  if (!rod.resources) rod.resources = defaultResources();
+  if (!rod.resources) rod.resources = defaultResources(rod.estate);
   if (!rod.answers) rod.answers = {};
   if (!rod.votes) rod.votes = {};
   if (!rod.seenReveal) rod.seenReveal = {};
@@ -67,5 +92,6 @@ function patchRod(rod){
   if (typeof rod.progress !== 'number') rod.progress = 0;
   if (!rod.estate) rod.estate = 'dvoryane';
   if (!rod.titles) rod.titles = {};
+  if (!rod.favor) rod.favor = {};
   return rod;
 }
