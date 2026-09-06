@@ -1,271 +1,310 @@
-:root{
-    --ink:#3B2A1B;
-    --ink-soft:#6B5642;
-    --parchment:#EFE3C8;
-    --parchment-dark:#E2D3AE;
-    --wood:#231B14;
-    --wood-2:#2F2318;
-    --wood-3:#3A2C1E;
-    --seal:#8C2A20;
-    --seal-dark:#6E2018;
-    --gold:#B8912E;
-    --gold-light:#D4B45A;
-    --green:#3F5741;
-    --green-dark:#2E4030;
-    --danger:#8C2A20;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:var(--wood);
-    color:var(--ink);
-    font-family:Georgia,'Palatino Linotype','Times New Roman',serif;
-    min-height:100vh;
-    background-image:
-      radial-gradient(circle at 15% 10%, rgba(184,145,46,0.06), transparent 40%),
-      radial-gradient(circle at 85% 90%, rgba(140,42,32,0.08), transparent 40%);
-  }
-  .ui{font-family:'Segoe UI',Arial,Helvetica,sans-serif;}
-  #app{max-width:1100px;margin:0 auto;padding:24px 16px 60px;}
+function landingScreen(){
+  return `
+  <button class="gm-tiny-link" id="btn-gm">вход для мастера игры</button>
+  <div class="center-screen">
+    <div class="landing-card">
+      <div class="crest">Б</div>
+      <h1 class="title">Бунташный век</h1>
+      <p class="subtitle">Ролевая игра для 7х классов</p>
+      <button class="role-btn" id="btn-rod">Начать игру</button>
+    </div>
+  </div>
+  <div class="school-footer">Школа 1576 «Праздники эпох»</div>`;
+}
+function bindLanding(){
+  document.getElementById('btn-gm').onclick = ()=>{ role='gm'; render(); };
+  document.getElementById('btn-rod').onclick = ()=>{ role='rod'; render(); };
+}
 
-  .center-screen{min-height:80vh;display:flex;align-items:center;justify-content:center;}
-  .landing-card{
-    background:var(--parchment);
-    border:1px solid var(--parchment-dark);
-    border-radius:6px;
-    padding:40px 36px;
-    max-width:440px;
-    width:100%;
-    text-align:center;
-    box-shadow:0 0 0 6px var(--wood-2), 0 8px 24px rgba(0,0,0,0.4);
+function rodJoinScreen(){
+  const existing = Object.keys(state.rods);
+  return `
+  <div class="center-screen">
+    <div class="landing-card">
+      <div class="crest">Р</div>
+      <h1 class="title" style="font-size:22px;">Впишите свой род в эпоху</h1>
+      <input type="text" id="rod-name-input" placeholder="Например: Волковы">
+      <div class="estate-row">
+        <button class="estate-btn" data-estate="boyare">Бояре</button>
+        <button class="estate-btn" data-estate="dvoryane">Дворяне</button>
+      </div>
+      <button class="role-btn" id="btn-join">Войти в игру</button>
+      ${existing.length ? `<div class="chip-row" id="chip-row">${existing.map(n=>`<button class="chip" data-name="${n}">${n}</button>`).join('')}</div>` : ''}
+      <div class="top-link" id="btn-back-landing" style="margin-top:14px;">← назад</div>
+    </div>
+  </div>`;
+}
+function bindRodJoin(){
+  selectedEstate = null;
+  document.querySelectorAll('.estate-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      selectedEstate = btn.dataset.estate;
+      document.querySelectorAll('.estate-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+  });
+  document.getElementById('btn-join').onclick = async ()=>{
+    const val = document.getElementById('rod-name-input').value.trim();
+    if(!val) return;
+    if(!selectedEstate){ alert('Выберите сословие: Бояре или Дворяне'); return; }
+    ensureRod(val, selectedEstate);
+    await saveState(state);
+    currentRod = val;
+    render();
+  };
+  const chipRow = document.getElementById('chip-row');
+  if(chipRow){
+    chipRow.querySelectorAll('.chip').forEach(btn=>{
+      btn.onclick = ()=>{ currentRod = btn.dataset.name; render(); };
+    });
   }
-  .crest{
-    width:56px;height:56px;margin:0 auto 18px;
-    border:2px solid var(--seal);
-    border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    color:var(--seal);font-size:26px;font-weight:bold;
-  }
-  h1.title{font-size:28px;margin:0 0 6px;letter-spacing:0.5px;color:var(--ink);}
-  .subtitle{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:var(--ink-soft);margin:0 0 28px;}
-  .role-btn{
-    display:block;width:100%;padding:14px 18px;margin-bottom:12px;
-    font-family:'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:600;
-    border-radius:4px;border:1px solid var(--seal);
-    background:var(--seal);color:var(--parchment);cursor:pointer;
-  }
-  .role-btn.secondary{background:transparent;color:var(--seal);}
-  .role-btn:active{transform:scale(0.99);}
+  document.getElementById('btn-back-landing').onclick = ()=>{ role=null; render(); };
+}
 
-  input[type=text]{
-    width:100%;padding:11px 12px;font-family:'Segoe UI',Arial,sans-serif;font-size:15px;
-    border:1px solid var(--parchment-dark);border-radius:4px;background:#FBF6E9;color:var(--ink);
-    margin-bottom:10px;
-  }
-  .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
-  .chip{
-    font-family:'Segoe UI',Arial,sans-serif;font-size:13px;padding:7px 13px;border-radius:16px;
-    border:1px solid var(--gold);color:var(--gold);background:transparent;cursor:pointer;
-  }
+function rodScreen(){
+  const rod = state.rods[currentRod];
+  const idx = Math.min(rod.progress || 0, state.events.length - 1);
+  const ev = state.events[idx];
+  const res = rod.resources;
+  const isLast = idx >= state.events.length - 1;
+  const nextBtnHtml = isLast
+    ? `<div class="event-card">
+        <span class="type-badge global">Конец Акта I</span>
+        <h2 class="event-title">Созывается Земский собор</h2>
+        <div class="outcome-box">
+          <div class="otitle">Приглашение получено</div>
+          <div class="otext">Династия Рюриковичей пресеклась. Борис Годунов созывает знатные рода на Земский собор — решать судьбу престола. Отложите планшеты: дальнейшее решится вживую, лицом к лицу.</div>
+        </div>
+      </div>`
+    : `<button class="choice-btn" id="btn-next-event">Далее →</button>`;
 
-  .estate-row{display:flex;gap:10px;margin:4px 0 16px;}
-  .estate-btn{
-    flex:1;padding:12px 8px;font-family:'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:600;
-    border-radius:4px;border:1px solid var(--parchment-dark);background:#FBF6E9;color:var(--ink-soft);cursor:pointer;
-  }
-  .estate-btn.active{
-    background:var(--seal);color:var(--parchment);border-color:var(--seal);
-  }
+  const titleBadges = Object.values(rod.titles||{}).map(t=>`<span class="title-badge">${t}</span>`).join('');
+  const header = `
+    <div class="rod-header">
+      <span class="name">${rod.estate === 'boyare' ? 'Боярский' : 'Дворянский'} род «${currentRod}» ${titleBadges}</span>
+      <button id="btn-leave">перейти к выбору рода</button>
+    </div>
+    <div class="resource-bar">
+      <div class="res-pill"><div class="val">${res.slava}</div><div class="lab">Слава</div></div>
+      <div class="res-pill"><div class="val">${res.krestyane}</div><div class="lab">Крестьяне</div></div>
+      <div class="res-pill"><div class="val">${res.zoloto}</div><div class="lab">Золото</div></div>
+    </div>`;
 
-  .resource-bar{
-    display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;
-  }
-  .res-pill{
-    flex:1;min-width:100px;background:var(--parchment);border:1px solid var(--parchment-dark);
-    border-radius:6px;padding:10px 12px;text-align:center;
-  }
-  .res-pill .val{font-size:22px;font-weight:bold;color:var(--ink);}
-  .res-pill .lab{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:var(--ink-soft);margin-top:2px;}
-
-  .rod-header{
-    display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px;
-    color:var(--parchment);
-  }
-  .rod-header .name{font-size:22px;}
-  .rod-header button{
-    font-family:'Segoe UI',Arial,sans-serif;font-size:12px;background:none;border:1px solid var(--parchment-dark);
-    color:var(--parchment-dark);padding:5px 10px;border-radius:4px;cursor:pointer;
-  }
-
-  .event-card{
-    background:var(--parchment);border:1px solid var(--parchment-dark);border-radius:6px;
-    padding:24px;margin-bottom:16px;
-  }
-  .era-badge{
-    display:inline-block;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;
-    color:var(--ink-soft);margin-bottom:8px;
-  }
-  .type-badge{
-    display:inline-block;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;font-weight:600;
-    padding:3px 9px;border-radius:10px;margin-left:8px;vertical-align:middle;
-  }
-  .type-badge.normal{background:#E3E9DE;color:var(--green-dark);}
-  .type-badge.global{background:#F1DCC9;color:var(--seal-dark);}
-  .event-title{font-size:22px;margin:0 0 12px;}
-  .event-desc{font-size:16px;line-height:1.6;color:var(--ink);margin-bottom:20px;}
-
-  .choice-btn{
-    display:block;width:100%;text-align:left;padding:14px 16px;margin-bottom:10px;
-    font-family:'Segoe UI',Arial,sans-serif;font-size:15px;
-    background:#FBF6E9;border:1px solid var(--parchment-dark);border-radius:4px;color:var(--ink);
-    cursor:pointer;
-  }
-  .choice-btn:active{background:var(--parchment-dark);}
-
-  .outcome-box{
-    border-left:4px solid var(--seal);background:#F6ECD9;padding:14px 16px;border-radius:0 4px 4px 0;
-  }
-  .outcome-box .otitle{font-size:17px;font-weight:bold;margin-bottom:6px;color:var(--seal-dark);}
-  .outcome-box .otext{font-size:14px;line-height:1.55;margin-bottom:10px;}
-  .effect-line{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;}
-  .effect-line.pos{color:var(--green-dark);}
-  .effect-line.neg{color:var(--seal-dark);}
-
-  .waiting-box{
-    font-family:'Segoe UI',Arial,sans-serif;text-align:center;padding:24px 12px;color:var(--ink-soft);font-size:14px;
+  // Непоказанные итоги отложенных (глобальных) событий — не зависят от того, на каком событии род сейчас
+  const pendingEv = state.events.find(e => e.type === 'global' && rod.votes[e.id] && state.globalResults[e.id] && !rod.seenReveal[e.id]);
+  let revealBanner = '';
+  if(pendingEv){
+    const gr = state.globalResults[pendingEv.id];
+    const out = pendingEv.outcomes[gr.majorityKey];
+    const myChoice = rod.votes[pendingEv.id];
+    const personalEffect = (out.effectByChoice && out.effectByChoice[myChoice]) || {};
+    revealBanner = `
+      <div class="event-card">
+        <span class="type-badge global">Вести с Земского собора</span>
+        <h2 class="event-title">${pendingEv.title}</h2>
+        <div class="outcome-box">
+          <div class="otitle">Итоги решены</div>
+          <div class="otext">${out.narrative}</div>
+          ${fmtDelta(personalEffect)}
+        </div>
+        <button class="choice-btn" id="btn-ack-reveal" data-ev="${pendingEv.id}">Понятно</button>
+      </div>`;
   }
 
-  /* GM view */
-  .gm-grid{display:grid;grid-template-columns:300px 1fr;gap:18px;}
-  @media (max-width:800px){.gm-grid{grid-template-columns:1fr;}}
-  .gm-panel{background:var(--parchment);border:1px solid var(--parchment-dark);border-radius:6px;padding:16px;}
-  .gm-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-  .gm-nav button{
-    font-family:'Segoe UI',Arial,sans-serif;background:var(--seal);color:var(--parchment);border:none;
-    padding:8px 14px;border-radius:4px;cursor:pointer;font-size:13px;
-  }
-  .gm-nav button:disabled{opacity:0.35;}
-  .gm-nav .pos{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:var(--ink-soft);}
-
-  table.summary{width:100%;border-collapse:collapse;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;}
-  table.summary th{text-align:left;color:var(--ink-soft);font-weight:600;padding:6px 4px;border-bottom:1px solid var(--parchment-dark);font-size:11px;}
-  table.summary td{padding:7px 4px;border-bottom:1px solid var(--parchment-dark);}
-  table.summary tr.rod-row{cursor:pointer;}
-  table.summary tr.rod-row:active{background:var(--parchment-dark);}
-
-  .history-panel{
-    background:#FBF6E9;border:1px solid var(--parchment-dark);border-radius:4px;padding:10px 12px;margin:4px 0 12px;
-    font-family:'Segoe UI',Arial,sans-serif;font-size:12.5px;
-  }
-  .history-item{padding:6px 0;border-bottom:1px dashed var(--parchment-dark);}
-  .history-item:last-child{border-bottom:none;}
-  .history-item .h-date{font-size:11px;color:var(--ink-soft);opacity:0.7;display:block;margin-bottom:1px;}
-  .history-item .h-event{font-weight:600;color:var(--ink);}
-  .history-item .h-choice{color:var(--ink-soft);}
-  .history-item .h-status{font-style:italic;color:var(--seal-dark);opacity:0.8;}
-
-  .vote-row{display:flex;justify-content:space-between;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;padding:5px 0;border-bottom:1px solid var(--parchment-dark);}
-  .vote-tally{margin:12px 0;}
-  .reveal-btn{
-    width:100%;padding:13px;font-family:'Segoe UI',Arial,sans-serif;font-weight:600;font-size:14px;
-    background:var(--green);color:var(--parchment);border:none;border-radius:4px;cursor:pointer;margin-top:10px;
-  }
-  .reveal-btn:disabled{background:#9aa89b;cursor:default;}
-  .revealed-note{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:var(--green-dark);padding:10px 0;}
-
-  .top-link{
-    font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:var(--gold-light);cursor:pointer;
-    display:inline-block;margin-bottom:16px;
-  }
-  .small-note{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:var(--ink-soft);margin-top:4px;}
-
-  /* Ссылка входа для мастера игры (справа сверху) и подпись школы (снизу по центру) */
-  .gm-tiny-link{
-    position:fixed; top:16px; right:16px;
-    background:none; border:none; font-family:'Segoe UI',Arial,sans-serif;
-    font-size:11px; color:var(--parchment-dark); opacity:0.55; cursor:pointer;
-  }
-  .school-footer{
-    position:fixed; bottom:10px; left:50%; transform:translateX(-50%);
-    font-family:'Segoe UI',Arial,sans-serif; font-size:11px;
-    color:var(--parchment-dark); opacity:0.45; text-align:center; white-space:nowrap;
+  // Панель истории — что род уже выбирал раньше и к чему это привело (без слухов, с датами)
+  const historyToggle = `<button class="top-link" id="btn-toggle-history">${showHistory ? 'Скрыть историю ▲' : 'История ▼'}</button>`;
+  let historyPanel = '';
+  if(showHistory){
+    const items = state.events.slice(0, idx).map(e=>{
+      const dateTag = `<span class="h-date">${e.era || ''}</span>`;
+      if(e.type === 'auction'){
+        const auction = state.auctions[e.id];
+        const myBid = auction && auction.bids && auction.bids[currentRod];
+        let status = 'не участвовали';
+        if(auction && auction.winner){
+          status = auction.winner === currentRod ? `получили титул «${e.titleName}»` : 'проиграли торги';
+        } else if(myBid !== undefined){
+          status = 'ставка сделана, ждём итогов';
+        }
+        return `<div class="history-item">${dateTag}<span class="h-event">${e.title}</span>: <span class="h-choice">${status}</span></div>`;
+      }
+      const choiceKey = e.type === 'normal' ? (rod.answers[e.id] && rod.answers[e.id].choiceKey) : rod.votes[e.id];
+      if(!choiceKey) return `<div class="history-item">${dateTag}<span class="h-event">${e.title}</span> — <span class="h-status">пропущено</span></div>`;
+      const choice = e.choices.find(c=>c.key===choiceKey);
+      return `<div class="history-item">${dateTag}<span class="h-event">${e.title}</span>: <span class="h-choice">${choice ? choice.label : ''}</span></div>`;
+    }).join('');
+    historyPanel = `<div class="history-panel">${items || '<span class="small-note">Пока ничего не было</span>'}</div>`;
   }
 
-  /* Вкладки сортировки рейтинга родов у ведущего */
-  .sort-tabs{
-    display:flex; gap:6px; margin:10px 0 12px;
-    font-family:'Segoe UI',Arial,sans-serif;
-  }
-  .sort-tabs button{
-    flex:1; font-size:12px; padding:6px 4px; border-radius:4px;
-    border:1px solid var(--parchment-dark); background:transparent; color:var(--ink-soft); cursor:pointer;
-  }
-  .sort-tabs button.active{
-    background:var(--seal); color:var(--parchment); border-color:var(--seal);
-  }
-
-  /* Шкала событий у ведущего */
-  .timeline{
-    display:flex; gap:14px; overflow-x:auto; padding:12px 4px 16px;
-    margin-bottom:10px;
-  }
-  .tl-item{
-    min-width:130px; text-align:center; cursor:pointer;
-    font-family:'Segoe UI',Arial,sans-serif; font-size:12px; color:var(--parchment-dark);
-    padding-bottom:6px; border-bottom:2px solid transparent;
-  }
-  .tl-item.active{ color:var(--gold-light); border-bottom-color:var(--gold); }
-  .tl-dot{
-    width:9px; height:9px; border-radius:50%; margin:0 auto 5px; background:var(--gold);
-  }
-  .tl-item.active .tl-dot{ background:var(--seal); }
-  .tl-title{ font-weight:600; margin-bottom:2px; }
-  .tl-count{ opacity:0.75; }
-  /* Слухи */
-  .type-badge.rumor{background:#E4D9C4;color:var(--ink-soft);}
-  .rumor-list{margin:10px 0 18px;}
-  .rumor-item{
-    font-size:14px; font-style:italic; color:var(--ink-soft); line-height:1.6;
-    padding:8px 0; border-bottom:1px dashed var(--parchment-dark);
-  }
-  .rumor-item:last-child{border-bottom:none;}
-
-  /* Торги за титул */
-  .type-badge.auction{background:#DCC9E8;color:#4A2E5C;}
-  .bid-row{display:flex;gap:8px;margin-top:6px;}
-  .bid-row input{
-    flex:1;padding:11px 12px;font-family:'Segoe UI',Arial,sans-serif;font-size:15px;
-    border:1px solid var(--parchment-dark);border-radius:4px;background:#FBF6E9;color:var(--ink);
-  }
-  .bid-row button{
-    display:inline-block; width:auto; flex:0 0 auto; white-space:nowrap; margin-bottom:0; padding:11px 16px;
+  // Слухи — необязательный переходный экран перед конкретным событием, показывается один раз
+  if(ev.rumors && ev.rumors.length && !rod.seenRumors[ev.id]){
+    const rumorBody = `
+      <div class="event-card">
+        <span class="era-badge">${ev.era || ''}</span><span class="type-badge rumor">Слухи</span>
+        <h2 class="event-title">Вести с земли</h2>
+        <div class="rumor-list">${ev.rumors.map(t=>`<p class="rumor-item">${t}</p>`).join('')}</div>
+        <button class="choice-btn" id="btn-rumor-continue" data-ev="${ev.id}">Далее →</button>
+      </div>`;
+    return `${header}${historyToggle}${historyPanel}${rumorBody}`;
   }
 
-  /* Бейдж титула */
-  .title-badge{
-    display:inline-block;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;font-weight:600;
-    background:var(--gold);color:#3A2C1E;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;
-  }
-  .title-badge-sm{
-    display:inline-block;font-family:'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:600;
-    background:var(--gold);color:#3A2C1E;padding:1px 6px;border-radius:8px;margin-left:4px;
+  let body = '';
+  if(ev.type === 'auction'){
+    const auction = state.auctions[ev.id] || {round:1, bids:{}, tiedRods:null, winner:null};
+    if(auction.winner){
+      const won = auction.winner === currentRod;
+      body = `
+        <div class="event-card">
+          <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
+          <h2 class="event-title">${ev.title}</h2>
+          <div class="outcome-box">
+            <div class="otitle">${won ? `Ваш род получил титул «${ev.titleName}»!` : `Титул «${ev.titleName}» получил род «${auction.winner}»`}</div>
+            <div class="otext">${auction.narrative || ''}</div>
+          </div>
+          ${nextBtnHtml}
+        </div>`;
+    } else {
+      const eligible = auction.round === 1 || (auction.tiedRods && auction.tiedRods.includes(currentRod));
+      const alreadyBid = auction.bids[currentRod] !== undefined;
+      if(!eligible){
+        body = `
+          <div class="event-card">
+            <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
+            <h2 class="event-title">${ev.title}</h2>
+            <div class="waiting-box">Ваша ставка не победила в первом раунде. Торги продолжаются между другими родами — ждите итогов.</div>
+          </div>`;
+      } else if(alreadyBid){
+        body = `
+          <div class="event-card">
+            <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
+            <h2 class="event-title">${ev.title}</h2>
+            <div class="waiting-box">Ставка принята: ${auction.bids[currentRod]} золота. Ждите оглашения итогов.</div>
+          </div>`;
+      } else {
+        body = `
+          <div class="event-card">
+            <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
+            <h2 class="event-title">${ev.title}</h2>
+            <p class="event-desc">${ev.description}</p>
+            ${auction.round > 1 ? `<p class="small-note">Второй раунд: ваша ставка сравнялась с другим родом. Новая ставка — из оставшегося золота.</p>` : ''}
+            <div class="bid-row">
+              <input type="number" id="bid-input" min="0" max="${res.zoloto}" placeholder="Золота (макс. ${res.zoloto})">
+              <button class="choice-btn" id="btn-submit-bid">Сделать ставку</button>
+            </div>
+          </div>`;
+      }
+    }
+  } else {
+    const answered = ev.type === 'normal' ? rod.answers[ev.id] : (rod.votes[ev.id] ? {choiceKey: rod.votes[ev.id]} : null);
+    const typeLabel = ev.type === 'normal' ? 'Обычное событие' : 'Глобальное событие';
+    const typeClass = ev.type === 'normal' ? 'normal' : 'global';
+    if(!answered){
+      const availableChoices = ev.choices.filter(c=>!c.requiresEstate || c.requiresEstate === rod.estate);
+      body = `
+        <div class="event-card">
+          <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
+          <h2 class="event-title">${ev.title}</h2>
+          <p class="event-desc">${ev.description}</p>
+          ${availableChoices.map(c=>`<button class="choice-btn" data-key="${c.key}">${c.label}</button>`).join('')}
+        </div>`;
+    } else {
+      const choice = ev.choices.find(c=>c.key===answered.choiceKey);
+      const waitNote = ev.type === 'global' ? `<p class="small-note">Итоги этого решения придут позже, на Земском соборе.</p>` : '';
+      body = `
+        <div class="event-card">
+          <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
+          <h2 class="event-title">${ev.title}</h2>
+          <p class="event-desc" style="opacity:0.75">Ваш выбор: ${choice ? choice.label : ''}</p>
+          <div class="outcome-box">
+            <div class="otitle">${choice.outcomeTitle}</div>
+            <div class="otext">${choice.outcomeText}</div>
+            ${fmtDelta(choice.effect)}
+          </div>
+          ${waitNote}
+          ${nextBtnHtml}
+        </div>`;
+    }
   }
 
-  /* Ручная правка ресурсов у ведущего */
-  .manual-adjust{
-    background:#FBF6E9;border:1px solid var(--parchment-dark);border-radius:4px;padding:10px 12px;margin:10px 0;
-    font-family:'Segoe UI',Arial,sans-serif;
-  }
-  .manual-adjust select, .manual-adjust input{
-    font-size:12px;padding:6px;margin:3px 3px 3px 0;border:1px solid var(--parchment-dark);border-radius:4px;background:#fff;
-  }
-  .manual-adjust input{width:90px;}
-  .manual-adjust button{
-    font-size:12px;padding:6px 10px;background:var(--gold);border:none;border-radius:4px;color:#3A2C1E;cursor:pointer;
+  return `${header}${historyToggle}${historyPanel}${revealBanner}${body}`;
+}
+function bindRodScreen(){
+  document.getElementById('btn-leave').onclick = ()=>{ currentRod=null; render(); };
+  const rod = state.rods[currentRod];
+  const idx = Math.min(rod.progress || 0, state.events.length - 1);
+  const ev = state.events[idx];
+
+  document.getElementById('btn-toggle-history').onclick = ()=>{ showHistory = !showHistory; render(); };
+
+  const rumorBtn = document.getElementById('btn-rumor-continue');
+  if(rumorBtn){
+    rumorBtn.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      if(!rod.seenRumors) rod.seenRumors = {};
+      rod.seenRumors[rumorBtn.dataset.ev] = true;
+      render();
+      await saveState(state);
+      busy = false;
+    };
+    return; // на экране слухов больше нечего привязывать
   }
 
-  /* Заметка только для ведущего (скрытое благоволение) */
-  .gm-only-note{
-    font-family:'Segoe UI',Arial,sans-serif;font-size:12px;background:#F1DCC9;border:1px dashed var(--seal);
-    border-radius:4px;padding:8px 10px;margin-bottom:10px;color:var(--seal-dark);
+  document.querySelectorAll('[data-key]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      const choice = ev.choices.find(c=>c.key===btn.dataset.key);
+      if(ev.type === 'normal'){
+        rod.answers[ev.id] = {choiceKey: choice.key};
+      } else {
+        rod.votes[ev.id] = choice.key;
+        rod.answers[ev.id] = {choiceKey: choice.key};
+      }
+      rod.resources = applyEffect(rod.resources, choice.effect || {});
+      applyFavor(rod, choice.hiddenFavor);
+      render();
+      await saveState(state);
+      busy = false;
+    };
+  });
+  const ackBtn = document.getElementById('btn-ack-reveal');
+  if(ackBtn){
+    ackBtn.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      rod.seenReveal[ackBtn.dataset.ev] = true;
+      render();
+      await saveState(state);
+      busy = false;
+    };
   }
+  const bidBtn = document.getElementById('btn-submit-bid');
+  if(bidBtn){
+    bidBtn.onclick = async ()=>{
+      if(busy) return;
+      const input = document.getElementById('bid-input');
+      let amount = parseInt(input.value, 10);
+      if(isNaN(amount) || amount <= 0){ alert('Введите сумму ставки больше нуля'); return; }
+      if(amount > rod.resources.zoloto) amount = rod.resources.zoloto;
+      busy = true;
+      if(!state.auctions[ev.id]) state.auctions[ev.id] = {round:1, bids:{}, tiedRods:null, winner:null};
+      state.auctions[ev.id].bids[currentRod] = amount;
+      rod.resources = applyEffect(rod.resources, {zoloto: -amount});
+      render();
+      await saveState(state);
+      busy = false;
+    };
+  }
+  const nextBtn = document.getElementById('btn-next-event');
+  if(nextBtn){
+    nextBtn.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      if(rod.progress < state.events.length - 1) rod.progress++;
+      render();
+      await saveState(state);
+      busy = false;
+    };
+  }
+}
