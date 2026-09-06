@@ -250,3 +250,22 @@
     display:inline-block;font-family:'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:600;
     background:var(--gold);color:#3A2C1E;padding:1px 6px;border-radius:8px;margin-left:4px;
   }
+
+  /* Ручная правка ресурсов у ведущего */
+  .manual-adjust{
+    background:#FBF6E9;border:1px solid var(--parchment-dark);border-radius:4px;padding:10px 12px;margin:10px 0;
+    font-family:'Segoe UI',Arial,sans-serif;
+  }
+  .manual-adjust select, .manual-adjust input{
+    font-size:12px;padding:6px;margin:3px 3px 3px 0;border:1px solid var(--parchment-dark);border-radius:4px;background:#fff;
+  }
+  .manual-adjust input{width:90px;}
+  .manual-adjust button{
+    font-size:12px;padding:6px 10px;background:var(--gold);border:none;border-radius:4px;color:#3A2C1E;cursor:pointer;
+  }
+
+  /* Заметка только для ведущего (скрытое благоволение) */
+  .gm-only-note{
+    font-family:'Segoe UI',Arial,sans-serif;font-size:12px;background:#F1DCC9;border:1px dashed var(--seal);
+    border-radius:4px;padding:8px 10px;margin-bottom:10px;color:var(--seal-dark);
+  }
