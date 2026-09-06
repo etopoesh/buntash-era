@@ -97,6 +97,17 @@ function gmScreen(){
           ${summaryRows || '<tr><td colspan="5" style="color:var(--ink-soft);padding:10px 0;">Ещё никто не присоединился</td></tr>'}
         </table>
         <div id="history-slot"></div>
+        <div class="manual-adjust">
+          <strong style="display:block;margin-bottom:6px;font-size:12px;">Ручная правка ресурсов (например, перевести благоволение в славу)</strong>
+          <select id="adjust-rod">${rodNames.map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
+          <select id="adjust-resource">
+            <option value="slava">Слава</option>
+            <option value="zoloto">Золото</option>
+            <option value="krestyane">Крестьяне (%)</option>
+          </select>
+          <input type="number" id="adjust-amount" placeholder="+/- число">
+          <button id="btn-manual-adjust">Применить</button>
+        </div>
         <button class="reveal-btn" style="background:var(--seal);margin-top:16px;" id="btn-reset">Сбросить игру</button>
       </div>
       <div class="gm-panel">${rightPanel}</div>
@@ -162,6 +173,21 @@ function bindGmScreen(){
     await saveState(state);
     busy = false;
   };
+  const adjustBtn = document.getElementById('btn-manual-adjust');
+  if(adjustBtn){
+    adjustBtn.onclick = async ()=>{
+      if(busy) return;
+      const rodName = document.getElementById('adjust-rod').value;
+      const resource = document.getElementById('adjust-resource').value;
+      const amount = parseInt(document.getElementById('adjust-amount').value, 10);
+      if(!rodName || isNaN(amount) || amount === 0) return;
+      busy = true;
+      state.rods[rodName].resources = applyEffect(state.rods[rodName].resources, {[resource]: amount});
+      render();
+      await saveState(state);
+      busy = false;
+    };
+  }
   const resolveBtn = document.getElementById('btn-resolve-auction');
   if(resolveBtn){
     resolveBtn.onclick = async ()=>{
@@ -220,7 +246,13 @@ function bindGmScreen(){
           return `<div class="history-item"><span class="h-event">${ev.title}</span>: <span class="h-choice">${choice.label}</span> <span class="h-status">${status}</span></div>`;
         }
       }).join('');
-      slot.innerHTML = `<div class="history-panel"><strong style="display:block;margin-bottom:6px;">История рода «${name}»</strong>${items}</div>`;
+      const favorLabels = {tsar:'Царь', godunov:'Годунов'};
+      const favorLines = Object.keys(rod.favor||{}).map(track=>{
+        const v = rod.favor[track];
+        return `<div>${favorLabels[track] || track}: ${v>0?'+':''}${v}</div>`;
+      }).join('');
+      const favorBlock = favorLines ? `<div class="gm-only-note"><strong>Благоволение (видно только ведущему):</strong>${favorLines}</div>` : '';
+      slot.innerHTML = `<div class="history-panel">${favorBlock}<strong style="display:block;margin-bottom:6px;">История рода «${name}»</strong>${items}</div>`;
     };
   });
 }
