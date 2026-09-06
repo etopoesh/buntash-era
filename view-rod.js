@@ -68,7 +68,14 @@ function rodScreen(){
   const res = rod.resources;
   const isLast = idx >= state.events.length - 1;
   const nextBtnHtml = isLast
-    ? `<p class="small-note">Это было последнее событие — ждите продолжения.</p>`
+    ? `<div class="event-card">
+        <span class="type-badge global">Конец Акта I</span>
+        <h2 class="event-title">Созывается Земский собор</h2>
+        <div class="outcome-box">
+          <div class="otitle">Приглашение получено</div>
+          <div class="otext">Династия Рюриковичей пресеклась. Борис Годунов созывает знатные рода на Земский собор — решать судьбу престола. Отложите планшеты: дальнейшее решится вживую, лицом к лицу.</div>
+        </div>
+      </div>`
     : `<button class="choice-btn" id="btn-next-event">Далее →</button>`;
 
   const titleBadges = Object.values(rod.titles||{}).map(t=>`<span class="title-badge">${t}</span>`).join('');
@@ -192,12 +199,13 @@ function rodScreen(){
     const typeLabel = ev.type === 'normal' ? 'Обычное событие' : 'Глобальное событие';
     const typeClass = ev.type === 'normal' ? 'normal' : 'global';
     if(!answered){
+      const availableChoices = ev.choices.filter(c=>!c.requiresEstate || c.requiresEstate === rod.estate);
       body = `
         <div class="event-card">
           <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
           <h2 class="event-title">${ev.title}</h2>
           <p class="event-desc">${ev.description}</p>
-          ${ev.choices.map(c=>`<button class="choice-btn" data-key="${c.key}">${c.label}</button>`).join('')}
+          ${availableChoices.map(c=>`<button class="choice-btn" data-key="${c.key}">${c.label}</button>`).join('')}
         </div>`;
     } else {
       const choice = ev.choices.find(c=>c.key===answered.choiceKey);
@@ -254,6 +262,7 @@ function bindRodScreen(){
         rod.answers[ev.id] = {choiceKey: choice.key};
       }
       rod.resources = applyEffect(rod.resources, choice.effect || {});
+      applyFavor(rod, choice.hiddenFavor);
       render();
       await saveState(state);
       busy = false;
