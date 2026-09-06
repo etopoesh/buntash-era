@@ -1,310 +1,258 @@
-function landingScreen(){
-  return `
-  <button class="gm-tiny-link" id="btn-gm">вход для мастера игры</button>
-  <div class="center-screen">
-    <div class="landing-card">
-      <div class="crest">Б</div>
-      <h1 class="title">Бунташный век</h1>
-      <p class="subtitle">Ролевая игра для 7х классов</p>
-      <button class="role-btn" id="btn-rod">Начать игру</button>
-    </div>
-  </div>
-  <div class="school-footer">Школа 1576 «Праздники эпох»</div>`;
-}
-function bindLanding(){
-  document.getElementById('btn-gm').onclick = ()=>{ role='gm'; render(); };
-  document.getElementById('btn-rod').onclick = ()=>{ role='rod'; render(); };
-}
+function gmScreen(){
+  const ev = state.events[state.currentIndex];
+  const allRodNames = Object.keys(state.rods);
+  const rodNames = allRodNames.slice().sort((a,b)=> state.rods[b].resources[sortBy] - state.rods[a].resources[sortBy]);
 
-function rodJoinScreen(){
-  const existing = Object.keys(state.rods);
-  return `
-  <div class="center-screen">
-    <div class="landing-card">
-      <div class="crest">Р</div>
-      <h1 class="title" style="font-size:22px;">Впишите свой род в эпоху</h1>
-      <input type="text" id="rod-name-input" placeholder="Например: Волковы">
-      <div class="estate-row">
-        <button class="estate-btn" data-estate="boyare">Бояре</button>
-        <button class="estate-btn" data-estate="dvoryane">Дворяне</button>
-      </div>
-      <button class="role-btn" id="btn-join">Войти в игру</button>
-      ${existing.length ? `<div class="chip-row" id="chip-row">${existing.map(n=>`<button class="chip" data-name="${n}">${n}</button>`).join('')}</div>` : ''}
-      <div class="top-link" id="btn-back-landing" style="margin-top:14px;">← назад</div>
-    </div>
-  </div>`;
-}
-function bindRodJoin(){
-  selectedEstate = null;
-  document.querySelectorAll('.estate-btn').forEach(btn=>{
-    btn.onclick = ()=>{
-      selectedEstate = btn.dataset.estate;
-      document.querySelectorAll('.estate-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-    };
-  });
-  document.getElementById('btn-join').onclick = async ()=>{
-    const val = document.getElementById('rod-name-input').value.trim();
-    if(!val) return;
-    if(!selectedEstate){ alert('Выберите сословие: Бояре или Дворяне'); return; }
-    ensureRod(val, selectedEstate);
-    await saveState(state);
-    currentRod = val;
-    render();
-  };
-  const chipRow = document.getElementById('chip-row');
-  if(chipRow){
-    chipRow.querySelectorAll('.chip').forEach(btn=>{
-      btn.onclick = ()=>{ currentRod = btn.dataset.name; render(); };
-    });
-  }
-  document.getElementById('btn-back-landing').onclick = ()=>{ role=null; render(); };
-}
-
-function rodScreen(){
-  const rod = state.rods[currentRod];
-  const idx = Math.min(rod.progress || 0, state.events.length - 1);
-  const ev = state.events[idx];
-  const res = rod.resources;
-  const isLast = idx >= state.events.length - 1;
-  const nextBtnHtml = isLast
-    ? `<div class="event-card">
-        <span class="type-badge global">Конец Акта I</span>
-        <h2 class="event-title">Созывается Земский собор</h2>
-        <div class="outcome-box">
-          <div class="otitle">Приглашение получено</div>
-          <div class="otext">Династия Рюриковичей пресеклась. Борис Годунов созывает знатные рода на Земский собор — решать судьбу престола. Отложите планшеты: дальнейшее решится вживую, лицом к лицу.</div>
-        </div>
-      </div>`
-    : `<button class="choice-btn" id="btn-next-event">Далее →</button>`;
-
-  const titleBadges = Object.values(rod.titles||{}).map(t=>`<span class="title-badge">${t}</span>`).join('');
-  const header = `
-    <div class="rod-header">
-      <span class="name">${rod.estate === 'boyare' ? 'Боярский' : 'Дворянский'} род «${currentRod}» ${titleBadges}</span>
-      <button id="btn-leave">перейти к выбору рода</button>
-    </div>
-    <div class="resource-bar">
-      <div class="res-pill"><div class="val">${res.slava}</div><div class="lab">Слава</div></div>
-      <div class="res-pill"><div class="val">${res.krestyane}</div><div class="lab">Крестьяне</div></div>
-      <div class="res-pill"><div class="val">${res.zoloto}</div><div class="lab">Золото</div></div>
+  const sortLabels = {slava:'Слава', krestyane:'Крестьяне', zoloto:'Золото'};
+  const sortTabs = `
+    <div class="sort-tabs">
+      ${Object.keys(sortLabels).map(k=>`<button data-sort="${k}" class="${sortBy===k?'active':''}">${sortLabels[k]}</button>`).join('')}
     </div>`;
 
-  // Непоказанные итоги отложенных (глобальных) событий — не зависят от того, на каком событии род сейчас
-  const pendingEv = state.events.find(e => e.type === 'global' && rod.votes[e.id] && state.globalResults[e.id] && !rod.seenReveal[e.id]);
-  let revealBanner = '';
-  if(pendingEv){
-    const gr = state.globalResults[pendingEv.id];
-    const out = pendingEv.outcomes[gr.majorityKey];
-    const myChoice = rod.votes[pendingEv.id];
-    const personalEffect = (out.effectByChoice && out.effectByChoice[myChoice]) || {};
-    revealBanner = `
-      <div class="event-card">
-        <span class="type-badge global">Вести с Земского собора</span>
-        <h2 class="event-title">${pendingEv.title}</h2>
-        <div class="outcome-box">
-          <div class="otitle">Итоги решены</div>
-          <div class="otext">${out.narrative}</div>
-          ${fmtDelta(personalEffect)}
-        </div>
-        <button class="choice-btn" id="btn-ack-reveal" data-ev="${pendingEv.id}">Понятно</button>
-      </div>`;
-  }
+  const summaryRows = rodNames.map((name,i)=>{
+    const r = state.rods[name];
+    const titles = Object.values(r.titles||{}).join(', ');
+    return `<tr class="rod-row" data-rod="${name}">
+      <td>${i+1}</td><td>${name}${titles ? ` <span class="title-badge-sm">${titles}</span>` : ''}</td><td>${r.resources.slava}</td><td>${r.resources.krestyane}</td><td>${r.resources.zoloto}</td>
+    </tr>`;
+  }).join('');
 
-  // Панель истории — что род уже выбирал раньше и к чему это привело (без слухов, с датами)
-  const historyToggle = `<button class="top-link" id="btn-toggle-history">${showHistory ? 'Скрыть историю ▲' : 'История ▼'}</button>`;
-  let historyPanel = '';
-  if(showHistory){
-    const items = state.events.slice(0, idx).map(e=>{
-      const dateTag = `<span class="h-date">${e.era || ''}</span>`;
-      if(e.type === 'auction'){
-        const auction = state.auctions[e.id];
-        const myBid = auction && auction.bids && auction.bids[currentRod];
-        let status = 'не участвовали';
-        if(auction && auction.winner){
-          status = auction.winner === currentRod ? `получили титул «${e.titleName}»` : 'проиграли торги';
-        } else if(myBid !== undefined){
-          status = 'ставка сделана, ждём итогов';
-        }
-        return `<div class="history-item">${dateTag}<span class="h-event">${e.title}</span>: <span class="h-choice">${status}</span></div>`;
-      }
-      const choiceKey = e.type === 'normal' ? (rod.answers[e.id] && rod.answers[e.id].choiceKey) : rod.votes[e.id];
-      if(!choiceKey) return `<div class="history-item">${dateTag}<span class="h-event">${e.title}</span> — <span class="h-status">пропущено</span></div>`;
-      const choice = e.choices.find(c=>c.key===choiceKey);
-      return `<div class="history-item">${dateTag}<span class="h-event">${e.title}</span>: <span class="h-choice">${choice ? choice.label : ''}</span></div>`;
-    }).join('');
-    historyPanel = `<div class="history-panel">${items || '<span class="small-note">Пока ничего не было</span>'}</div>`;
-  }
+  const timeline = state.events.map((e,i)=>{
+    let done;
+    if(e.type === 'normal') done = allRodNames.filter(n=>state.rods[n].answers[e.id]).length;
+    else if(e.type === 'global') done = allRodNames.filter(n=>state.rods[n].votes[e.id]).length;
+    else if(e.type === 'auction') done = (state.auctions[e.id] && state.auctions[e.id].winner) ? allRodNames.length : (state.auctions[e.id] ? Object.keys(state.auctions[e.id].bids).length : 0);
+    return `<div class="tl-item ${i===state.currentIndex?'active':''}" data-jump="${i}">
+      <div class="tl-dot"></div>
+      <div class="tl-title">${e.title}</div>
+      <div class="tl-count">${done}/${allRodNames.length}</div>
+    </div>`;
+  }).join('');
 
-  // Слухи — необязательный переходный экран перед конкретным событием, показывается один раз
-  if(ev.rumors && ev.rumors.length && !rod.seenRumors[ev.id]){
-    const rumorBody = `
-      <div class="event-card">
-        <span class="era-badge">${ev.era || ''}</span><span class="type-badge rumor">Слухи</span>
-        <h2 class="event-title">Вести с земли</h2>
-        <div class="rumor-list">${ev.rumors.map(t=>`<p class="rumor-item">${t}</p>`).join('')}</div>
-        <button class="choice-btn" id="btn-rumor-continue" data-ev="${ev.id}">Далее →</button>
-      </div>`;
-    return `${header}${historyToggle}${historyPanel}${rumorBody}`;
-  }
-
-  let body = '';
-  if(ev.type === 'auction'){
+  let rightPanel = '';
+  if(ev.type === 'normal'){
+    const answeredCount = allRodNames.filter(n=>state.rods[n].answers[ev.id]).length;
+    rightPanel = `
+      <span class="era-badge">${ev.era}</span><span class="type-badge normal">Обычное</span>
+      <h2 class="event-title">${ev.title}</h2>
+      <p class="event-desc">${ev.description}</p>
+      <p class="ui" style="font-size:13px;color:var(--ink-soft);">Ответили: ${answeredCount} из ${allRodNames.length} родов</p>
+    `;
+  } else if(ev.type === 'auction'){
     const auction = state.auctions[ev.id] || {round:1, bids:{}, tiedRods:null, winner:null};
-    if(auction.winner){
-      const won = auction.winner === currentRod;
-      body = `
-        <div class="event-card">
-          <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
-          <h2 class="event-title">${ev.title}</h2>
-          <div class="outcome-box">
-            <div class="otitle">${won ? `Ваш род получил титул «${ev.titleName}»!` : `Титул «${ev.titleName}» получил род «${auction.winner}»`}</div>
-            <div class="otext">${auction.narrative || ''}</div>
-          </div>
-          ${nextBtnHtml}
-        </div>`;
-    } else {
-      const eligible = auction.round === 1 || (auction.tiedRods && auction.tiedRods.includes(currentRod));
-      const alreadyBid = auction.bids[currentRod] !== undefined;
-      if(!eligible){
-        body = `
-          <div class="event-card">
-            <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
-            <h2 class="event-title">${ev.title}</h2>
-            <div class="waiting-box">Ваша ставка не победила в первом раунде. Торги продолжаются между другими родами — ждите итогов.</div>
-          </div>`;
-      } else if(alreadyBid){
-        body = `
-          <div class="event-card">
-            <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
-            <h2 class="event-title">${ev.title}</h2>
-            <div class="waiting-box">Ставка принята: ${auction.bids[currentRod]} золота. Ждите оглашения итогов.</div>
-          </div>`;
-      } else {
-        body = `
-          <div class="event-card">
-            <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
-            <h2 class="event-title">${ev.title}</h2>
-            <p class="event-desc">${ev.description}</p>
-            ${auction.round > 1 ? `<p class="small-note">Второй раунд: ваша ставка сравнялась с другим родом. Новая ставка — из оставшегося золота.</p>` : ''}
-            <div class="bid-row">
-              <input type="number" id="bid-input" min="0" max="${res.zoloto}" placeholder="Золота (макс. ${res.zoloto})">
-              <button class="choice-btn" id="btn-submit-bid">Сделать ставку</button>
-            </div>
-          </div>`;
+    const eligibleRods = auction.round === 1 ? allRodNames : (auction.tiedRods || []);
+    const bidRows = eligibleRods.map(n=>{
+      const bid = auction.bids[n];
+      return `<div class="vote-row"><span>${n}</span><span>${bid !== undefined ? bid + ' зол.' : 'ждём…'}</span></div>`;
+    }).join('');
+    const allBid = eligibleRods.length > 0 && eligibleRods.every(n=>auction.bids[n]!==undefined);
+    rightPanel = `
+      <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
+      <h2 class="event-title">${ev.title}</h2>
+      <p class="event-desc">${ev.description}</p>
+      <p class="small-note">Раунд ${auction.round}${auction.round>1 ? ' — переторжка при ничьей, между: ' + (auction.tiedRods||[]).join(', ') : ''}</p>
+      <div class="vote-tally">${bidRows || '<p class="small-note">Пока никто не поставил</p>'}</div>
+      ${auction.winner
+        ? `<div class="revealed-note">Титул «${ev.titleName}» получил род «${auction.winner}».<br>${auction.narrative || ''}</div>`
+        : `<button class="reveal-btn" id="btn-resolve-auction">${allBid ? 'Определить победителя' : 'Определить победителя (не все ещё поставили)'}</button>`
       }
-    }
+    `;
   } else {
-    const answered = ev.type === 'normal' ? rod.answers[ev.id] : (rod.votes[ev.id] ? {choiceKey: rod.votes[ev.id]} : null);
-    const typeLabel = ev.type === 'normal' ? 'Обычное событие' : 'Глобальное событие';
-    const typeClass = ev.type === 'normal' ? 'normal' : 'global';
-    if(!answered){
-      const availableChoices = ev.choices.filter(c=>!c.requiresEstate || c.requiresEstate === rod.estate);
-      body = `
-        <div class="event-card">
-          <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
-          <h2 class="event-title">${ev.title}</h2>
-          <p class="event-desc">${ev.description}</p>
-          ${availableChoices.map(c=>`<button class="choice-btn" data-key="${c.key}">${c.label}</button>`).join('')}
-        </div>`;
-    } else {
-      const choice = ev.choices.find(c=>c.key===answered.choiceKey);
-      const waitNote = ev.type === 'global' ? `<p class="small-note">Итоги этого решения придут позже, на Земском соборе.</p>` : '';
-      body = `
-        <div class="event-card">
-          <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
-          <h2 class="event-title">${ev.title}</h2>
-          <p class="event-desc" style="opacity:0.75">Ваш выбор: ${choice ? choice.label : ''}</p>
-          <div class="outcome-box">
-            <div class="otitle">${choice.outcomeTitle}</div>
-            <div class="otext">${choice.outcomeText}</div>
-            ${fmtDelta(choice.effect)}
-          </div>
-          ${waitNote}
-          ${nextBtnHtml}
-        </div>`;
-    }
-  }
+    const tally = {};
+    ev.choices.forEach(c=>tally[c.key]=0);
+    allRodNames.forEach(n=>{ const v = state.rods[n].votes[ev.id]; if(v) tally[v]++; });
+    const notVoted = allRodNames.filter(n=>!state.rods[n].votes[ev.id]);
 
-  return `${header}${historyToggle}${historyPanel}${revealBanner}${body}`;
-}
-function bindRodScreen(){
-  document.getElementById('btn-leave').onclick = ()=>{ currentRod=null; render(); };
-  const rod = state.rods[currentRod];
-  const idx = Math.min(rod.progress || 0, state.events.length - 1);
-  const ev = state.events[idx];
-
-  document.getElementById('btn-toggle-history').onclick = ()=>{ showHistory = !showHistory; render(); };
-
-  const rumorBtn = document.getElementById('btn-rumor-continue');
-  if(rumorBtn){
-    rumorBtn.onclick = async ()=>{
-      if(busy) return;
-      busy = true;
-      if(!rod.seenRumors) rod.seenRumors = {};
-      rod.seenRumors[rumorBtn.dataset.ev] = true;
-      render();
-      await saveState(state);
-      busy = false;
-    };
-    return; // на экране слухов больше нечего привязывать
-  }
-
-  document.querySelectorAll('[data-key]').forEach(btn=>{
-    btn.onclick = async ()=>{
-      if(busy) return;
-      busy = true;
-      const choice = ev.choices.find(c=>c.key===btn.dataset.key);
-      if(ev.type === 'normal'){
-        rod.answers[ev.id] = {choiceKey: choice.key};
-      } else {
-        rod.votes[ev.id] = choice.key;
-        rod.answers[ev.id] = {choiceKey: choice.key};
+    rightPanel = `
+      <span class="era-badge">${ev.era}</span><span class="type-badge global">Глобальное</span>
+      <h2 class="event-title">${ev.title}</h2>
+      <p class="event-desc">${ev.description}</p>
+      <div class="vote-tally">
+        ${ev.choices.map(c=>`<div class="vote-row"><span>${c.label}</span><span>${tally[c.key]}</span></div>`).join('')}
+      </div>
+      ${notVoted.length ? `<p class="small-note">Ещё не проголосовали: ${notVoted.join(', ')}</p>` : `<p class="small-note">Все рода проголосовали.</p>`}
+      ${state.globalResults[ev.id]
+        ? `<div class="revealed-note">Итоги оглашены: победил вариант «${ev.choices.find(c=>c.key===state.globalResults[ev.id].majorityKey)?.label}».<br>${ev.outcomes[state.globalResults[ev.id].majorityKey].narrative}</div>`
+        : `<button class="reveal-btn" id="btn-reveal">Огласить итоги (после Земского собора)</button>`
       }
-      rod.resources = applyEffect(rod.resources, choice.effect || {});
-      applyFavor(rod, choice.hiddenFavor);
+    `;
+  }
+
+  return `
+    <div class="rod-header">
+      <span class="name">Панель ведущего</span>
+      <button id="btn-leave-gm">выйти</button>
+    </div>
+    <div class="timeline">${timeline}</div>
+    <div class="gm-grid">
+      <div class="gm-panel">
+        <div class="gm-nav">
+          <button id="btn-prev" ${state.currentIndex===0?'disabled':''}>← пред.</button>
+          <span class="pos ui">Событие ${state.currentIndex+1} / ${state.events.length}</span>
+          <button id="btn-next" ${state.currentIndex===state.events.length-1?'disabled':''}>след. →</button>
+        </div>
+        ${sortTabs}
+        <table class="summary">
+          <tr><th>#</th><th>Род</th><th>Слава</th><th>Крест.</th><th>Золото</th></tr>
+          ${summaryRows || '<tr><td colspan="5" style="color:var(--ink-soft);padding:10px 0;">Ещё никто не присоединился</td></tr>'}
+        </table>
+        <div id="history-slot"></div>
+        <div class="manual-adjust">
+          <strong style="display:block;margin-bottom:6px;font-size:12px;">Ручная правка ресурсов (например, перевести благоволение в славу)</strong>
+          <select id="adjust-rod">${rodNames.map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
+          <select id="adjust-resource">
+            <option value="slava">Слава</option>
+            <option value="zoloto">Золото</option>
+            <option value="krestyane">Крестьяне (%)</option>
+          </select>
+          <input type="number" id="adjust-amount" placeholder="+/- число">
+          <button id="btn-manual-adjust">Применить</button>
+        </div>
+        <button class="reveal-btn" style="background:var(--seal);margin-top:16px;" id="btn-reset">Сбросить игру</button>
+      </div>
+      <div class="gm-panel">${rightPanel}</div>
+    </div>
+  `;
+}
+function bindGmScreen(){
+  document.getElementById('btn-leave-gm').onclick = ()=>{ role=null; render(); };
+  document.querySelectorAll('.sort-tabs button').forEach(btn=>{
+    btn.onclick = ()=>{ sortBy = btn.dataset.sort; render(); };
+  });
+  document.querySelectorAll('.tl-item').forEach(item=>{
+    item.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      state.currentIndex = parseInt(item.dataset.jump, 10);
       render();
       await saveState(state);
       busy = false;
     };
   });
-  const ackBtn = document.getElementById('btn-ack-reveal');
-  if(ackBtn){
-    ackBtn.onclick = async ()=>{
+  document.getElementById('btn-prev').onclick = async ()=>{
+    if(busy || state.currentIndex<=0) return;
+    busy = true;
+    state.currentIndex--; render(); await saveState(state); busy = false;
+  };
+  document.getElementById('btn-next').onclick = async ()=>{
+    if(busy || state.currentIndex>=state.events.length-1) return;
+    busy = true;
+    state.currentIndex++; render(); await saveState(state); busy = false;
+  };
+  const revealBtn = document.getElementById('btn-reveal');
+  if(revealBtn){
+    revealBtn.onclick = async ()=>{
       if(busy) return;
       busy = true;
-      rod.seenReveal[ackBtn.dataset.ev] = true;
+      const ev = state.events[state.currentIndex];
+      const rodNames = Object.keys(state.rods);
+      const tally = {};
+      ev.choices.forEach(c=>tally[c.key]=0);
+      rodNames.forEach(n=>{ const v = state.rods[n].votes[ev.id]; if(v) tally[v]++; });
+      let majorityKey = ev.choices[0].key;
+      let max = -1;
+      ev.choices.forEach(c=>{ if(tally[c.key] > max){ max = tally[c.key]; majorityKey = c.key; } });
+      state.globalResults[ev.id] = {majorityKey};
+      const out = ev.outcomes[majorityKey];
+      rodNames.forEach(n=>{
+        const rod = state.rods[n];
+        const myChoice = rod.votes[ev.id];
+        const eff = (out.effectByChoice && out.effectByChoice[myChoice]) || {};
+        rod.resources = applyEffect(rod.resources, eff);
+      });
       render();
       await saveState(state);
       busy = false;
     };
   }
-  const bidBtn = document.getElementById('btn-submit-bid');
-  if(bidBtn){
-    bidBtn.onclick = async ()=>{
+  document.getElementById('btn-reset').onclick = async ()=>{
+    if(!confirm('Сбросить всю игру и ресурсы всех родов?')) return;
+    busy = true;
+    state = initialState();
+    render();
+    await saveState(state);
+    busy = false;
+  };
+  const adjustBtn = document.getElementById('btn-manual-adjust');
+  if(adjustBtn){
+    adjustBtn.onclick = async ()=>{
       if(busy) return;
-      const input = document.getElementById('bid-input');
-      let amount = parseInt(input.value, 10);
-      if(isNaN(amount) || amount <= 0){ alert('Введите сумму ставки больше нуля'); return; }
-      if(amount > rod.resources.zoloto) amount = rod.resources.zoloto;
+      const rodName = document.getElementById('adjust-rod').value;
+      const resource = document.getElementById('adjust-resource').value;
+      const amount = parseInt(document.getElementById('adjust-amount').value, 10);
+      if(!rodName || isNaN(amount) || amount === 0) return;
       busy = true;
+      state.rods[rodName].resources = applyEffect(state.rods[rodName].resources, {[resource]: amount});
+      render();
+      await saveState(state);
+      busy = false;
+    };
+  }
+  const resolveBtn = document.getElementById('btn-resolve-auction');
+  if(resolveBtn){
+    resolveBtn.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      const ev = state.events[state.currentIndex];
       if(!state.auctions[ev.id]) state.auctions[ev.id] = {round:1, bids:{}, tiedRods:null, winner:null};
-      state.auctions[ev.id].bids[currentRod] = amount;
-      rod.resources = applyEffect(rod.resources, {zoloto: -amount});
+      const auction = state.auctions[ev.id];
+      const eligibleRods = auction.round === 1 ? Object.keys(state.rods) : (auction.tiedRods || []);
+      let maxBid = -1;
+      eligibleRods.forEach(n=>{ const b = auction.bids[n] || 0; if(b > maxBid) maxBid = b; });
+      const topRods = eligibleRods.filter(n=>(auction.bids[n]||0) === maxBid && maxBid > 0);
+      if(topRods.length === 1){
+        const winnerName = topRods[0];
+        auction.winner = winnerName;
+        auction.narrative = `Наивысшую ставку сделал род «${winnerName}» — ${maxBid} золота.`;
+        if(!state.rods[winnerName].titles) state.rods[winnerName].titles = {};
+        state.rods[winnerName].titles[ev.titleKey] = ev.titleName;
+      } else if(topRods.length > 1){
+        auction.round++;
+        auction.tiedRods = topRods;
+        auction.bids = {};
+      } else {
+        // никто не поставил ничего — повторяем раунд для тех же участников
+        auction.round++;
+        auction.tiedRods = eligibleRods;
+        auction.bids = {};
+      }
       render();
       await saveState(state);
       busy = false;
     };
   }
-  const nextBtn = document.getElementById('btn-next-event');
-  if(nextBtn){
-    nextBtn.onclick = async ()=>{
-      if(busy) return;
-      busy = true;
-      if(rod.progress < state.events.length - 1) rod.progress++;
-      render();
-      await saveState(state);
-      busy = false;
+  document.querySelectorAll('.rod-row').forEach(row=>{
+    row.onclick = ()=>{
+      const name = row.dataset.rod;
+      const slot = document.getElementById('history-slot');
+      const rod = state.rods[name];
+      const items = state.events.map(ev=>{
+        if(ev.type==='normal'){
+          const a = rod.answers[ev.id];
+          if(!a) return `<div class="history-item"><span class="h-event">${ev.title}</span> — <span class="h-status">ещё не выбрано</span></div>`;
+          const choice = ev.choices.find(c=>c.key===a.choiceKey);
+          return `<div class="history-item"><span class="h-event">${ev.title}</span>: <span class="h-choice">${choice.label}</span></div>`;
+        } else if(ev.type==='auction'){
+          const auction = state.auctions[ev.id];
+          const bid = auction && auction.bids && auction.bids[name];
+          if(bid === undefined) return `<div class="history-item"><span class="h-event">${ev.title}</span> — <span class="h-status">не участвовал</span></div>`;
+          const status = auction.winner ? (auction.winner === name ? `получил титул «${ev.titleName}»` : 'проиграл торги') : 'ставка сделана, ждёт итогов';
+          return `<div class="history-item"><span class="h-event">${ev.title}</span>: <span class="h-choice">ставка ${bid} зол.</span> <span class="h-status">${status}</span></div>`;
+        } else {
+          const v = rod.votes[ev.id];
+          if(!v) return `<div class="history-item"><span class="h-event">${ev.title}</span> — <span class="h-status">ещё не голосовал</span></div>`;
+          const choice = ev.choices.find(c=>c.key===v);
+          const status = state.globalResults[ev.id] ? '(итоги оглашены)' : '(ждёт Земского собора)';
+          return `<div class="history-item"><span class="h-event">${ev.title}</span>: <span class="h-choice">${choice.label}</span> <span class="h-status">${status}</span></div>`;
+        }
+      }).join('');
+      const favorLabels = {tsar:'Царь', godunov:'Годунов'};
+      const favorLines = Object.keys(rod.favor||{}).map(track=>{
+        const v = rod.favor[track];
+        return `<div>${favorLabels[track] || track}: ${v>0?'+':''}${v}</div>`;
+      }).join('');
+      const favorBlock = favorLines ? `<div class="gm-only-note"><strong>Благоволение (видно только ведущему):</strong>${favorLines}</div>` : '';
+      slot.innerHTML = `<div class="history-panel">${favorBlock}<strong style="display:block;margin-bottom:6px;">История рода «${name}»</strong>${items}</div>`;
     };
-  }
+  });
 }
