@@ -4,7 +4,8 @@ function initialState(){
     events: [],
     rods: {},
     globalResults: {},
-    auctions: {}
+    auctions: {},
+    economyTicks: {}
   };
 }
 
@@ -105,4 +106,26 @@ function patchAuction(auction){
   if (typeof auction.tiedRods === 'undefined') auction.tiedRods = null;
   if (typeof auction.winner === 'undefined') auction.winner = null;
   return auction;
+}
+
+// Контрольные точки перехода: id события, при уходе с которого начисляется пассивная экономика.
+const ECONOMY_TICK_POINTS = ['livonia-1569', 'cheremis-1574', 'pskov-siege-1581', 'forbidden-years-1592'];
+
+function clamp(v, min, max){
+  return Math.max(min, Math.min(max, v));
+}
+
+// Пассивный тик экономики: Милость → Крестьяне → Золото → Титул.
+// Мутирует rod.resources, ничего не возвращает.
+function applyEconomyTick(rod){
+  const milostBefore = rod.resources.slava;
+  const krestyaneGrowthPct = clamp(Math.round(milostBefore / 5), -20, 20);
+  rod.resources = applyEffect(rod.resources, {krestyane: krestyaneGrowthPct});
+
+  const income = Math.round(rod.resources.krestyane * 0.4);
+  rod.resources.zoloto += income;
+
+  if (rod.titles && rod.titles['treasurer']){
+    rod.resources.slava += 15;
+  }
 }
