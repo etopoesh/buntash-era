@@ -3,7 +3,7 @@ function gmScreen(){
   const allRodNames = Object.keys(state.rods);
   const rodNames = allRodNames.slice().sort((a,b)=> state.rods[b].resources[sortBy] - state.rods[a].resources[sortBy]);
 
-  const sortLabels = {slava:'Слава', krestyane:'Крестьяне', zoloto:'Золото'};
+  const sortLabels = {slava:'Милость', krestyane:'Крестьяне', zoloto:'Золото'};
   const sortTabs = `
     <div class="sort-tabs">
       ${Object.keys(sortLabels).map(k=>`<button data-sort="${k}" class="${sortBy===k?'active':''}">${sortLabels[k]}</button>`).join('')}
@@ -93,7 +93,7 @@ function gmScreen(){
         </div>
         ${sortTabs}
         <table class="summary">
-          <tr><th>#</th><th>Род</th><th>Слава</th><th>Крест.</th><th>Золото</th></tr>
+          <tr><th>#</th><th>Род</th><th>Милость</th><th>Крест.</th><th>Золото</th></tr>
           ${summaryRows || '<tr><td colspan="5" style="color:var(--ink-soft);padding:10px 0;">Ещё никто не присоединился</td></tr>'}
         </table>
         <div id="history-slot"></div>
@@ -101,7 +101,7 @@ function gmScreen(){
           <strong style="display:block;margin-bottom:6px;font-size:12px;">Ручная правка ресурсов (например, перевести благоволение в славу)</strong>
           <select id="adjust-rod">${rodNames.map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
           <select id="adjust-resource">
-            <option value="slava">Слава</option>
+            <option value="slava">Милость</option>
             <option value="zoloto">Золото</option>
             <option value="krestyane">Крестьяне (%)</option>
           </select>
@@ -246,7 +246,7 @@ function bindGmScreen(){
           return `<div class="history-item"><span class="h-event">${ev.title}</span>: <span class="h-choice">${choice.label}</span> <span class="h-status">${status}</span></div>`;
         }
       }).join('');
-      const favorLabels = {tsar:'Царь', godunov:'Годунов'};
+      const favorLabels = {godunov:'Годунов'};
       const favorLines = Object.keys(rod.favor||{}).map(track=>{
         const v = rod.favor[track];
         return `<div>${favorLabels[track] || track}: ${v>0?'+':''}${v}</div>`;
