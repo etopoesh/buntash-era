@@ -12,6 +12,7 @@ async function render(){
       patchRod(state.rods[name]);
     });
   }
+  Object.keys(state.auctions || {}).forEach(id => patchAuction(state.auctions[id]));
 
   const banner = errorBanner();
   if(!role){
@@ -55,6 +56,7 @@ async function boot(){
           patchRod(state.rods[name]);
         });
       }
+      Object.keys(state.auctions || {}).forEach(id => patchAuction(state.auctions[id]));
 
     } else {
       state = initialState();
@@ -63,5 +65,3 @@ async function boot(){
     }
     render();
   });
-}
-boot();
