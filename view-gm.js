@@ -137,6 +137,14 @@ function bindGmScreen(){
   document.getElementById('btn-next').onclick = async ()=>{
     if(busy || state.currentIndex>=state.events.length-1) return;
     busy = true;
+    const leavingEvent = state.events[state.currentIndex];
+    if(leavingEvent && ECONOMY_TICK_POINTS.includes(leavingEvent.id)){
+      if(!state.economyTicks) state.economyTicks = {};
+      if(!state.economyTicks[leavingEvent.id]){
+        Object.keys(state.rods).forEach(name => applyEconomyTick(state.rods[name]));
+        state.economyTicks[leavingEvent.id] = true;
+      }
+    }
     state.currentIndex++; render(); await saveState(state); busy = false;
   };
   const revealBtn = document.getElementById('btn-reveal');
