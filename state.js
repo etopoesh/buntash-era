@@ -25,7 +25,7 @@ let showHistory = false; // переключатель "История" на э�
 // Крестьяне считаются в процентах от текущего числа (не могут уйти в минус),
 // деньги и слава — обычными числами (могут уйти в минус).
 function fmtDelta(effect){
-  const labels = {slava:'Слава', zoloto:'Золото'};
+  const labels = {slava:'Царская милость', zoloto:'Золото'};
   const parts = [];
   for(const k in effect){
     if(!effect[k]) continue;
@@ -68,6 +68,7 @@ function ensureRod(name, estate){
       votes: {},
       seenReveal: {},
       seenRumors: {},
+      seenIntro: false,
       order: Object.keys(state.rods).length,
       progress: 0,
       estate: estate || 'dvoryane',
@@ -89,6 +90,7 @@ function patchRod(rod){
   if (!rod.votes) rod.votes = {};
   if (!rod.seenReveal) rod.seenReveal = {};
   if (!rod.seenRumors) rod.seenRumors = {};
+  if (typeof rod.seenIntro !== 'boolean') rod.seenIntro = false;
   if (typeof rod.progress !== 'number') rod.progress = 0;
   if (!rod.estate) rod.estate = 'dvoryane';
   if (!rod.titles) rod.titles = {};
