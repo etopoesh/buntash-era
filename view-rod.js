@@ -9,7 +9,7 @@ function landingScreen(){
       <button class="role-btn" id="btn-rod">Начать игру</button>
     </div>
   </div>
-  <div class="school-footer">Школа 1576 «Праздники эпох»</div>`;
+  <div class="school-footer">Школа №1576 «Праздники эпох»</div>`;
 }
 function bindLanding(){
   document.getElementById('btn-gm').onclick = ()=>{ role='gm'; render(); };
