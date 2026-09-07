@@ -85,7 +85,7 @@ function rodScreen(){
       <button id="btn-leave">перейти к выбору рода</button>
     </div>
     <div class="resource-bar">
-      <div class="res-pill"><div class="val">${res.slava}</div><div class="lab">Слава</div></div>
+      <div class="res-pill"><div class="val">${res.slava}</div><div class="lab">Царская милость</div></div>
       <div class="res-pill"><div class="val">${res.krestyane}</div><div class="lab">Крестьяне</div></div>
       <div class="res-pill"><div class="val">${res.zoloto}</div><div class="lab">Золото</div></div>
     </div>`;
@@ -134,6 +134,20 @@ function rodScreen(){
       return `<div class="history-item">${dateTag}<span class="h-event">${e.title}</span>: <span class="h-choice">${choice ? choice.label : ''}</span></div>`;
     }).join('');
     historyPanel = `<div class="history-panel">${items || '<span class="small-note">Пока ничего не было</span>'}</div>`;
+  }
+
+  // Стартовое окно — показывается один раз, перед самым первым событием акта
+  if(idx === 0 && !rod.seenIntro){
+    const estateLabel = rod.estate === 'boyare' ? 'боярский' : 'дворянский';
+    const introBody = `
+      <div class="event-card">
+        <span class="era-badge">1567 год</span><span class="type-badge rumor">Начало игры</span>
+        <h2 class="event-title">Ваш род вступает в игру</h2>
+        <p class="event-desc">На троне — государь Иван Васильевич, прозванный в народе Грозным. Страна разделена надвое: часть земель царь забрал себе в опричнину, остальное осталось в земщине. Чёрные всадники опричного войска, с собачьей головой да метлой у седла, наводят страх на бояр и дворян по всей Руси — кто им угоден, тому милость и защита, кто нет — того ждёт опала.</p>
+        <p class="event-desc">Ваш род — <strong>${currentRod}</strong>, ${estateLabel} род. Отныне его судьба в ваших руках: как поведёте себя при дворе и на службе, так и сложится участь семьи в эти смутные времена.</p>
+        <button class="choice-btn" id="btn-intro-continue">Далее →</button>
+      </div>`;
+    return `${header}${historyToggle}${historyPanel}${introBody}`;
   }
 
   // Слухи — необязательный переходный экран перед конкретным событием, показывается один раз
@@ -235,6 +249,19 @@ function bindRodScreen(){
   const ev = state.events[idx];
 
   document.getElementById('btn-toggle-history').onclick = ()=>{ showHistory = !showHistory; render(); };
+
+  const introBtn = document.getElementById('btn-intro-continue');
+  if(introBtn){
+    introBtn.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      rod.seenIntro = true;
+      render();
+      await saveState(state);
+      busy = false;
+    };
+    return; // на стартовом экране больше нечего привязывать
+  }
 
   const rumorBtn = document.getElementById('btn-rumor-continue');
   if(rumorBtn){
