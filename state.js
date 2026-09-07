@@ -97,3 +97,12 @@ function patchRod(rod){
   if (!rod.favor) rod.favor = {};
   return rod;
 }
+
+// Предохранитель: приводит объект аукциона к полной форме (используется и в render(), и в boot())
+function patchAuction(auction){
+  if (typeof auction.round !== 'number') auction.round = 1;
+  if (!auction.bids) auction.bids = {};
+  if (typeof auction.tiedRods === 'undefined') auction.tiedRods = null;
+  if (typeof auction.winner === 'undefined') auction.winner = null;
+  return auction;
+}
