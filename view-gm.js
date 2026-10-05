@@ -73,7 +73,7 @@ function gmScreen(){
       ${notVoted.length ? `<p class="small-note">Ещё не проголосовали: ${notVoted.join(', ')}</p>` : `<p class="small-note">Все рода проголосовали.</p>`}
       ${state.globalResults[ev.id]
         ? `<div class="revealed-note">Итоги оглашены: победил вариант «${ev.choices.find(c=>c.key===state.globalResults[ev.id].majorityKey)?.label}».<br>${ev.outcomes[state.globalResults[ev.id].majorityKey].narrative}</div>`
-        : `<button class="reveal-btn" id="btn-reveal">Огласить итоги (после Земского собора)</button>`
+        : `<button class="reveal-btn" id="btn-reveal" style="background:transparent;color:var(--danger);border:2px solid var(--danger);">⚠️ Огласить досрочно</button>`
       }
     `;
   }
@@ -151,23 +151,10 @@ function bindGmScreen(){
   if(revealBtn){
     revealBtn.onclick = async ()=>{
       if(busy) return;
+      if(!confirm('Огласить итоги досрочно, не дожидаясь голосов всех родов? Это форс-оверрайд обычного автоматического оглашения, отменить будет нельзя.')) return;
       busy = true;
       const ev = state.events[state.currentIndex];
-      const rodNames = Object.keys(state.rods);
-      const tally = {};
-      ev.choices.forEach(c=>tally[c.key]=0);
-      rodNames.forEach(n=>{ const v = state.rods[n].votes[ev.id]; if(v) tally[v]++; });
-      let majorityKey = ev.choices[0].key;
-      let max = -1;
-      ev.choices.forEach(c=>{ if(tally[c.key] > max){ max = tally[c.key]; majorityKey = c.key; } });
-      state.globalResults[ev.id] = {majorityKey};
-      const out = ev.outcomes[majorityKey];
-      rodNames.forEach(n=>{
-        const rod = state.rods[n];
-        const myChoice = rod.votes[ev.id];
-        const eff = (out.effectByChoice && out.effectByChoice[myChoice]) || {};
-        rod.resources = applyEffect(rod.resources, eff);
-      });
+      resolveGlobalEvent(ev);
       render();
       await saveState(state);
       busy = false;
