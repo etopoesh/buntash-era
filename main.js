@@ -4,6 +4,8 @@ async function render(){
 
   if (!state.globalResults) state.globalResults = {};
   if (!state.auctions) state.auctions = {};
+  if (!state.national) state.national = {stability: 0, centralization: 0};
+  if (!state.majorityBonusResolved) state.majorityBonusResolved = {};
   if (!state.rods) {
     state.rods = {};
   } else {
@@ -46,6 +48,8 @@ async function boot(){
       state.events = freshEvents;
       if (!state.globalResults) state.globalResults = {};
       if (!state.auctions) state.auctions = {};
+      if (!state.national) state.national = {stability: 0, centralization: 0};
+      if (!state.majorityBonusResolved) state.majorityBonusResolved = {};
 
       // Предохранитель для списка родов
       if (!state.rods) {
@@ -58,9 +62,38 @@ async function boot(){
       }
       Object.keys(state.auctions || {}).forEach(id => patchAuction(state.auctions[id]));
 
+      // Автооглашение global-событий: как только все рода проголосовали, ведущему
+      // не нужно жать "Огласить итоги" — подводим итог сами (форс-кнопка остаётся для оверрайда).
+      // Та же логика для majorityBonus на choice у type:"normal" событий — только nationalEffect,
+      // без личных эффектов (они уже применены каждому роду индивидуально при ответе).
+      if (role === 'gm') {
+        const rodNames = Object.keys(state.rods);
+        if (rodNames.length > 0) {
+          state.events.forEach(ev => {
+            if (ev.type === 'global' && !state.globalResults[ev.id]) {
+              const allVoted = rodNames.every(n => state.rods[n].votes && state.rods[n].votes[ev.id]);
+              if (allVoted) {
+                resolveGlobalEvent(ev);
+                saveState(state);
+              }
+            }
+            if (ev.type === 'normal' && !state.majorityBonusResolved[ev.id]) {
+              const allAnswered = rodNames.every(n => state.rods[n].answers && state.rods[n].answers[ev.id]);
+              if (allAnswered) {
+                resolveMajorityBonus(ev);
+                saveState(state);
+              }
+            }
+          });
+        }
+      }
+
     } else {
       state = initialState();
       state.events = freshEvents;
+      // На самом первом запуске initialState() ещё не видел state.events (его тогда не было),
+      // поэтому startIndex() там вернул 0 — пересчитываем теперь, когда события уже на месте.
+      state.currentIndex = startIndex();
       stateRef.set(state);
     }
     render();
