@@ -9,7 +9,7 @@ function landingScreen(){
       <button class="role-btn" id="btn-rod">Начать игру</button>
     </div>
   </div>
-  <div class="school-footer">Школа №1576 «Праздники эпох»</div>`;
+  <div class="school-footer">Школа 1576 «Праздники эпох»</div>`;
 }
 function bindLanding(){
   document.getElementById('btn-gm').onclick = ()=>{ role='gm'; render(); };
@@ -66,6 +66,7 @@ function rodScreen(){
   const idx = Math.min(rod.progress || 0, state.events.length - 1);
   const ev = state.events[idx];
   const res = rod.resources;
+  const nat = state.national || {stability: 0, centralization: 0};
   const isLast = idx >= state.events.length - 1;
   const nextBtnHtml = isLast
     ? `<div class="event-card">
@@ -88,6 +89,10 @@ function rodScreen(){
       <div class="res-pill"><div class="val">${res.slava}</div><div class="lab">Царская милость</div></div>
       <div class="res-pill"><div class="val">${res.krestyane}</div><div class="lab">Крестьяне</div></div>
       <div class="res-pill"><div class="val">${res.zoloto}</div><div class="lab">Золото</div></div>
+    </div>
+    <div class="resource-bar national-bar">
+      <div class="res-pill"><div class="val">${nat.stability}</div><div class="lab">Стабильность державы</div></div>
+      <div class="res-pill"><div class="val">${nat.centralization}</div><div class="lab">Централизация</div></div>
     </div>`;
 
   // Непоказанные итоги отложенных (глобальных) событий — не зависят от того, на каком событии род сейчас
@@ -106,8 +111,24 @@ function rodScreen(){
           <div class="otitle">Итоги решены</div>
           <div class="otext">${out.narrative}</div>
           ${fmtDelta(personalEffect)}
+          ${out.nationalEffect ? fmtNationalDelta(out.nationalEffect) : ''}
         </div>
         <button class="choice-btn" id="btn-ack-reveal" data-ev="${pendingEv.id}">Понятно</button>
+      </div>`;
+  }
+
+  // Бонус по прибытии — показывается, если у рода стоит нужный флаг и событие ещё не показывало бонус
+  let arrivalBonusBanner = '';
+  if(ev.arrivalBonus && ev.arrivalBonus.requiresFlag && rod.flags && rod.flags[ev.arrivalBonus.requiresFlag] && !rod.seenArrivalBonus[ev.id]){
+    arrivalBonusBanner = `
+      <div class="event-card">
+        <span class="type-badge global">Особое обстоятельство</span>
+        <h2 class="event-title">${ev.arrivalBonus.title || ev.title}</h2>
+        <div class="outcome-box">
+          <div class="otext">${ev.arrivalBonus.narrative || ''}</div>
+          ${fmtDelta(ev.arrivalBonus.effect)}
+        </div>
+        <button class="choice-btn" id="btn-ack-arrival" data-ev="${ev.id}">Понятно</button>
       </div>`;
   }
 
@@ -224,6 +245,8 @@ function rodScreen(){
     } else {
       const choice = ev.choices.find(c=>c.key===answered.choiceKey);
       const waitNote = ev.type === 'global' ? `<p class="small-note">Итоги этого решения придут позже, на Земском соборе.</p>` : '';
+      const activeConditional = findConditionalEffect(choice, rod);
+      const outcomeText = (activeConditional && activeConditional.outcomeTextOverride) ? activeConditional.outcomeTextOverride : choice.outcomeText;
       body = `
         <div class="event-card">
           <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
@@ -231,7 +254,7 @@ function rodScreen(){
           <p class="event-desc" style="opacity:0.75">Ваш выбор: ${choice ? choice.label : ''}</p>
           <div class="outcome-box">
             <div class="otitle">${choice.outcomeTitle}</div>
-            <div class="otext">${choice.outcomeText}</div>
+            <div class="otext">${outcomeText}</div>
             ${fmtDelta(choice.effect)}
           </div>
           ${waitNote}
@@ -240,7 +263,7 @@ function rodScreen(){
     }
   }
 
-  return `${header}${historyToggle}${historyPanel}${revealBanner}${body}`;
+  return `${header}${historyToggle}${historyPanel}${revealBanner}${arrivalBonusBanner}${body}`;
 }
 function bindRodScreen(){
   document.getElementById('btn-leave').onclick = ()=>{ currentRod=null; render(); };
@@ -290,6 +313,14 @@ function bindRodScreen(){
       }
       rod.resources = applyEffect(rod.resources, choice.effect || {});
       applyFavor(rod, choice.hiddenFavor);
+      if(choice.setFlags){
+        if(!rod.flags) rod.flags = {};
+        choice.setFlags.forEach(flag => { rod.flags[flag] = true; });
+      }
+      const activeConditional = findConditionalEffect(choice, rod);
+      if(activeConditional && activeConditional.effect){
+        rod.resources = applyEffect(rod.resources, activeConditional.effect);
+      }
       render();
       await saveState(state);
       busy = false;
@@ -301,6 +332,20 @@ function bindRodScreen(){
       if(busy) return;
       busy = true;
       rod.seenReveal[ackBtn.dataset.ev] = true;
+      render();
+      await saveState(state);
+      busy = false;
+    };
+  }
+  const ackArrivalBtn = document.getElementById('btn-ack-arrival');
+  if(ackArrivalBtn){
+    ackArrivalBtn.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      const arrivalEv = state.events.find(e => e.id === ackArrivalBtn.dataset.ev);
+      rod.resources = applyEffect(rod.resources, arrivalEv.arrivalBonus.effect || {});
+      if(!rod.seenArrivalBonus) rod.seenArrivalBonus = {};
+      rod.seenArrivalBonus[ackArrivalBtn.dataset.ev] = true;
       render();
       await saveState(state);
       busy = false;
