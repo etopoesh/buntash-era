@@ -1,11 +1,26 @@
+// Стартовая точка новой игры/рода — ищется по id, а не хардкодится индексом,
+// т.к. порядок событий в массиве может ещё поменяться.
+const START_EVENT_ID = "famine-1601";
+function startIndex(){
+  // Защита: на самом первом запуске (data===null в Firebase) initialState()
+  // вызывается раньше, чем глобальный state.events успевает заполниться —
+  // в этот момент безопасно возвращаем 0, а boot() в main.js выставит верный
+  // индекс повторно сразу после присвоения state.events.
+  if (!state || !state.events) return 0;
+  const i = state.events.findIndex(e => e.id === START_EVENT_ID);
+  return i >= 0 ? i : 0;
+}
+
 function initialState(){
   return {
-    currentIndex: 0,
+    currentIndex: startIndex(),
     events: [],
     rods: {},
     globalResults: {},
     auctions: {},
-    economyTicks: {}
+    economyTicks: {},
+    national: {stability: 0, centralization: 0},
+    majorityBonusResolved: {}
   };
 }
 
@@ -36,6 +51,19 @@ function fmtDelta(effect){
     } else {
       parts.push(`<span class="effect-line ${v>0?'pos':'neg'}">${v>0?'+':''}${v} ${labels[k]}</span>`);
     }
+  }
+  return parts.join(' &nbsp; ');
+}
+
+// Аналог fmtDelta для эффектов на национальные показатели (state.national) —
+// Стабильность/Централизация — всегда абсолютные числа, без процентного случая krestyane.
+function fmtNationalDelta(effect){
+  const labels = {stability:'Стабильность', centralization:'Централизация'};
+  const parts = [];
+  for(const k in effect){
+    if(!effect[k]) continue;
+    const v = effect[k];
+    parts.push(`<span class="effect-line ${v>0?'pos':'neg'}">${v>0?'+':''}${v} ${labels[k]||k}</span>`);
   }
   return parts.join(' &nbsp; ');
 }
@@ -71,7 +99,7 @@ function ensureRod(name, estate){
       seenRumors: {},
       seenIntro: false,
       order: Object.keys(state.rods).length,
-      progress: 0,
+      progress: startIndex(),
       estate: estate || 'dvoryane',
       titles: {},
       favor: {}
@@ -96,7 +124,15 @@ function patchRod(rod){
   if (!rod.estate) rod.estate = 'dvoryane';
   if (!rod.titles) rod.titles = {};
   if (!rod.favor) rod.favor = {};
+  if (!rod.flags) rod.flags = {};
+  if (!rod.seenArrivalBonus) rod.seenArrivalBonus = {};
   return rod;
+}
+
+// Ищет первый элемент choice.conditionalEffects, чей requiresFlag стоит у рода.
+function findConditionalEffect(choice, rod){
+  if (!choice.conditionalEffects) return null;
+  return choice.conditionalEffects.find(ce => ce.requiresFlag && rod.flags && rod.flags[ce.requiresFlag]) || null;
 }
 
 // Предохранитель: приводит объект аукциона к полной форме (используется и в render(), и в boot())
@@ -127,5 +163,65 @@ function applyEconomyTick(rod){
 
   if (rod.titles && rod.titles['treasurer']){
     rod.resources.slava += 15;
+  }
+}
+
+// Подводит итоги global-события: тальи голосов, запись в state.globalResults,
+// применение effectByChoice каждому роду и nationalEffect (если указан) к state.national.
+// Мутирует state, ничего не возвращает. Идемпотентна по факту вызова (перезаписывает тот же id).
+function resolveGlobalEvent(ev){
+  const rodNames = Object.keys(state.rods);
+  const tally = {};
+  ev.choices.forEach(c => tally[c.key] = 0);
+  rodNames.forEach(n => { const v = state.rods[n].votes[ev.id]; if (v) tally[v]++; });
+
+  let majorityKey = ev.choices[0].key;
+  let max = -1;
+  ev.choices.forEach(c => { if (tally[c.key] > max) { max = tally[c.key]; majorityKey = c.key; } });
+
+  state.globalResults[ev.id] = {majorityKey};
+  const out = ev.outcomes[majorityKey];
+
+  rodNames.forEach(n => {
+    const rod = state.rods[n];
+    const myChoice = rod.votes[ev.id];
+    const eff = (out.effectByChoice && out.effectByChoice[myChoice]) || {};
+    rod.resources = applyEffect(rod.resources, eff);
+  });
+
+  if (out.nationalEffect){
+    if (!state.national) state.national = {stability: 0, centralization: 0};
+    for (const k in out.nationalEffect){
+      state.national[k] = (state.national[k] || 0) + out.nationalEffect[k];
+    }
+  }
+}
+
+// Аналог resolveGlobalEvent для type:"normal" событий с choice.majorityBonus —
+// тальи личных ответов (rod.answers), без effectByChoice, только nationalEffect
+// того выбора, что набрал большинство. Мутирует state, ничего не возвращает.
+function resolveMajorityBonus(ev){
+  const rodNames = Object.keys(state.rods);
+  const tally = {};
+  ev.choices.forEach(c => tally[c.key] = 0);
+  rodNames.forEach(n => {
+    const ans = state.rods[n].answers[ev.id];
+    if (ans && ans.choiceKey) tally[ans.choiceKey]++;
+  });
+
+  let majorityKey = ev.choices[0].key;
+  let max = -1;
+  ev.choices.forEach(c => { if (tally[c.key] > max) { max = tally[c.key]; majorityKey = c.key; } });
+
+  if (!state.majorityBonusResolved) state.majorityBonusResolved = {};
+  state.majorityBonusResolved[ev.id] = {majorityKey};
+
+  const choice = ev.choices.find(c => c.key === majorityKey);
+  const nationalEffect = choice && choice.majorityBonus && choice.majorityBonus.nationalEffect;
+  if (nationalEffect){
+    if (!state.national) state.national = {stability: 0, centralization: 0};
+    for (const k in nationalEffect){
+      state.national[k] = (state.national[k] || 0) + nationalEffect[k];
+    }
   }
 }
