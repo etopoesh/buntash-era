@@ -25,8 +25,9 @@ const STATE_JS = path.join(__dirname, '..', 'state.js');
 // ---------- правила из state.js ----------
 function loadRules(file){
   const code = fs.readFileSync(file, 'utf8') +
-    '\n;globalThis.__rules = {applyEffect, resolveEffect, computeEconomyTick, pendingMilestones, SLAVA_MILESTONES,' +
-    ' defaultResources, druzhinaOf, findConditionalEffect, getArrivalBonuses, arrivalBonusKey, initialState};';
+    '\n;globalThis.__rules = {applyEffect, resolveEffect, computeEconomyTick, applyEconomyTick, pendingMilestones, SLAVA_MILESTONES,' +
+    ' defaultResources, druzhinaOf, findConditionalEffect, getArrivalBonuses, arrivalBonusKey, initialState,' +
+    ' majorityOf, bribeCost, computeMilitary, activeIncomeMods, finalRanking, worldVerdict, roundHalfUp, fmtDelta, resourceEffect};';
   const sandbox = {};
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox, {filename: file});
@@ -83,9 +84,16 @@ function runOne(strategyName, estate, seedForRun){
     } else {
       (choice.setFlags || []).forEach(f => { flags[f] = true; });
       const druzhina = R.druzhinaOf(res0);
-      resources = R.applyEffect(res0, R.resolveEffect(choice, rod, druzhina));
+      let eff = R.resolveEffect(choice, rod, druzhina);
       const cond = R.findConditionalEffect(choice, {flags});
-      if(cond && cond.effect) resources = R.applyEffect(resources, cond.effect);
+      if(cond && cond.effect) for(const k in cond.effect) eff[k] = (eff[k] || 0) + (cond.effect[k] || 0);
+      // Военный расчёт по выбранным ресурсам (R9): шкала «+1 за каждого выставленного» + потери
+      if(choice.military){
+        const m = R.computeMilitary(res0.krestyane, choice.military, rod.casualtyReduction ? [rod.casualtyReduction] : []);
+        for(const k in m.scaleEffect) eff[k] = (eff[k] || 0) + m.scaleEffect[k];
+        if(m.lost) eff.krestyane = (eff.krestyane || 0) - m.lost;
+      }
+      resources = R.applyEffect(res0, eff);
       natEffect = choice.majorityBonus && choice.majorityBonus.nationalEffect || null;
     }
     return {resources, flags, natEffect};
@@ -106,7 +114,14 @@ function runOne(strategyName, estate, seedForRun){
     });
 
     if(ev.type === 'narrative'){
-      rod.resources = R.applyEffect(rod.resources, R.resolveEffect(ev, rod));
+      const eff = R.resolveEffect(ev, rod);
+      const branch = R.findConditionalEffect(ev, rod);
+      if(branch && branch.military){
+        const m = R.computeMilitary(rod.resources.krestyane, branch.military, rod.casualtyReduction ? [rod.casualtyReduction] : []);
+        for(const k in m.scaleEffect) eff[k] = (eff[k] || 0) + m.scaleEffect[k];
+        if(m.lost) eff.krestyane = (eff.krestyane || 0) - m.lost;
+      }
+      rod.resources = R.applyEffect(rod.resources, eff);
     } else {
       const options = ev.choices.filter(c => !c.requiresEstate || c.requiresEstate === estate);
       let pick;

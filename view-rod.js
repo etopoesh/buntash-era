@@ -20,16 +20,17 @@ function escapeHtml(t){
   return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Блок «Хозяйство за ход» + строки наград за знатность. resources — ресурсы, по которым считается прикидка.
-function turnSummaryHtml(resources, estate){
-  const t = computeEconomyTick(resources, estate, state.national);
+// Блок «Хозяйство за ход» + строки наград за знатность. resources — ресурсы, по которым считается прикидка;
+// rod и turn — чьи прибавки к доходу и тик какого хода имеется в виду (R4/R6).
+function turnSummaryHtml(resources, estate, rod, turn){
+  const t = computeEconomyTick(resources, estate, state.national, activeIncomeMods(rod, turn));
   const lines = [];
   if(t.fleeCentralPct) lines.push(`Бегство из-за низкой централизации: −${t.fleeCentralPct}%`);
   if(t.fleeStabilityPct) lines.push(`Бегство из-за низкой стабильности: −${t.fleeStabilityPct}%`);
   if(t.fleeCentralPct || t.fleeStabilityPct) lines.push(t.krestyaneDelta < 0 ? `Крестьяне: ≈ −${-t.krestyaneDelta}` : 'Крестьяне: ≈ 0');
   lines.push(`Золото: +${t.zolotoDelta}`);
   const rewards = pendingMilestones(currentRodObject(), resources.slava)
-    .map(m => `<div class="effect-line pos">Царская милость: вам жалуют землю с крестьянами, +${m.krestyane}</div>`).join('');
+    .map(m => `<div class="effect-line pos">Знатность: вам жалуют землю с крестьянами, +${m.krestyane}</div>`).join('');
   return `
     <div class="outcome-box">
       <strong style="font-size:12px;">Хозяйство за ход</strong> <span class="small-note">по текущим данным</span>
@@ -91,7 +92,7 @@ function rodScreen(){
       <button id="btn-leave">перейти к выбору рода</button>
     </div>
     <div class="resource-bar">
-      <div class="res-pill"><div class="val">${res.slava}</div><div class="lab">Царская милость</div></div>
+      <div class="res-pill"><div class="val">${res.slava}</div><div class="lab">Знатность</div></div>
       <div class="res-pill"><div class="val">${res.zoloto}</div><div class="lab">Золото</div></div>
       <div class="res-pill"><div class="val">${res.krestyane}</div><div class="lab">Крестьяне</div></div>
       <div class="res-pill"><div class="val">${Math.floor(res.krestyane/20)}</div><div class="lab">Дружина</div></div>
@@ -171,6 +172,14 @@ function rodScreen(){
     ? `<p class="event-desc">Ваш род — <strong>${currentRod}</strong>, ${rod.estate === 'boyare' ? 'боярский' : 'дворянский'}.</p>`
     : '';
 
+  // Вводная по сословию на первом соборе (ТЗ 20 §2): род видит только свой блок, чужой не показывается
+  const estateIntro = ev.introByEstate && ev.introByEstate[rod.estate]
+    ? `<div class="outcome-box">
+        <div class="otitle">${ev.introByEstate[rod.estate].title || ''}</div>
+        <div class="otext">${ev.introByEstate[rod.estate].text || ''}</div>
+      </div>`
+    : '';
+
   // Слухи — необязательный переходный экран перед конкретным событием, показывается один раз
   if(ev.rumors && ev.rumors.length && !rod.seenRumors[ev.id]){
     const rumorBody = `
@@ -197,20 +206,32 @@ function rodScreen(){
         <h2 class="event-title">${ev.title}</h2>
         <p class="event-desc">${ev.description}</p>
         ${rodCardLine}
+        ${estateIntro}
         ${assemblyAction}
       </div>`;
   } else if(ev.type === 'narrative'){
     // Событие без выбора: эффект применяется по клику «Далее →» (см. bindRodScreen)
-    const narrativeEffect = fmtDelta(resolveEffect(ev, rod));
-    const afterNarrative = applyEffect(rod.resources, resolveEffect(ev, rod)); // эффект события для прикидки уже учтён
+    const branch = findConditionalEffect(ev, rod);
+    const eff = resolveEffect(ev, rod); // общий + сословие + условная ветка (опричники/земцы на ходе 17)
+    // Военная ветка (опричники на ходе 17): расчёт по душам на момент показа, с накопленными снижениями потерь
+    const mil = branch && branch.military ? computeMilitary(rod.resources.krestyane, branch.military, rod.casualtyReduction ? [rod.casualtyReduction] : []) : null;
+    const effShown = Object.assign({}, eff);
+    if(mil){
+      for(const k in mil.scaleEffect) effShown[k] = (effShown[k] || 0) + mil.scaleEffect[k];
+      if(mil.lost) effShown.krestyane = (effShown.krestyane || 0) - mil.lost;
+    }
+    const narrativeEffect = fmtDelta(effShown);
+    const afterNarrative = applyEffect(rod.resources, effShown); // эффект события для прикидки уже учтён
     body = `
       <div class="event-card">
         <span class="era-badge">${ev.era || ''}</span><span class="type-badge normal">Хроника</span>
         <h2 class="event-title">${ev.title}</h2>
         <p class="event-desc">${ev.description}</p>
+        ${branch && branch.text ? `<div class="outcome-box"><div class="otext">${branch.text}</div></div>` : ''}
         ${narrativeEffect ? `<div class="outcome-box">${narrativeEffect}</div>` : ''}
+        ${mil ? `<div class="outcome-box"><div class="effect-line">Боевые холопы: выставлено ${mil.fielded}, погибло ${mil.lost}</div></div>` : ''}
         ${rodCardLine}
-        ${turnSummaryHtml(afterNarrative, rod.estate)}
+        ${turnSummaryHtml(afterNarrative, rod.estate, rod, ev.turn)}
         ${nextBtnHtml}
       </div>`;
   } else if(ev.type === 'auction'){
@@ -225,7 +246,7 @@ function rodScreen(){
             <div class="otitle">${won ? `Ваш род получил титул «${ev.titleName}»!` : `Титул «${ev.titleName}» получил род «${auction.winner}»`}</div>
             <div class="otext">${auction.narrative || ''}</div>
           </div>
-          ${turnSummaryHtml(rod.resources, rod.estate)}
+          ${turnSummaryHtml(rod.resources, rod.estate, rod, ev.turn)}
           ${nextBtnHtml}
         </div>`;
     } else {
@@ -285,27 +306,34 @@ function rodScreen(){
             <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
             <h2 class="event-title">${ev.title}</h2>
             <p class="event-desc" style="opacity:0.75">Ваш выбор: ${choice ? choice.label : ''}</p>
-            ${turnSummaryHtml(rod.resources, rod.estate)}
+            ${turnSummaryHtml(rod.resources, rod.estate, rod, ev.turn)}
             ${waitNote}
             ${nextBtnHtml}
           </div>`;
       } else {
-        const activeConditional = findConditionalEffect(choice, rod);
-        const baseOutcomeText = (activeConditional && activeConditional.outcomeTextOverride) ? activeConditional.outcomeTextOverride : choice.outcomeText;
-        const druzhinaAtChoice = answered.druzhina;
-        const tierUsed = findDruzhinaTier(choice, druzhinaAtChoice === undefined ? druzhinaOf(rod.resources) : druzhinaAtChoice);
-        const outcomeText = baseOutcomeText + (tierUsed && tierUsed.note ? ' ' + tierUsed.note : '');
+        // Снимок исхода записан в момент клика (ТЗ 1.1, R7/R8): чистые тексты и готовые числа,
+        // посчитанные по ресурсам до выбора. Старые сохранения без снимка — лучшая попытка по текущим ресурсам.
+        const snap = answered.outcome;
+        const title = snap && snap.title !== undefined ? snap.title : choice.outcomeTitle;
+        const text = snap && snap.text !== undefined ? snap.text : choice.outcomeText;
+        const estateText = snap ? (snap.estateText || '') : '';
+        const deltas = snap ? snap.deltas : resolveEffect(choice, rod, answered.druzhina);
+        const mil = snap && snap.military;
+        const inc = snap && snap.income;
         body = `
           <div class="event-card">
             <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
             <h2 class="event-title">${ev.title}</h2>
             <p class="event-desc" style="opacity:0.75">Ваш выбор: ${choice ? choice.label : ''}</p>
             <div class="outcome-box">
-              <div class="otitle">${choice.outcomeTitle}</div>
-              <div class="otext">${outcomeText}</div>
-              ${fmtDelta(resolveEffect(choice, rod, druzhinaAtChoice))}
+              <div class="otitle">${title}</div>
+              <div class="otext">${text}</div>
+              ${estateText ? `<div class="otext">${estateText}</div>` : ''}
+              ${fmtDelta(deltas)}
+              ${mil ? `<div class="effect-line">Боевые холопы: выставлено ${mil.fielded}, погибло ${mil.lost}</div>` : ''}
+              ${inc ? `<div class="effect-line pos">Доход: +${inc.amount} в ход</div>` : ''}
             </div>
-            ${turnSummaryHtml(rod.resources, rod.estate)}
+            ${turnSummaryHtml(rod.resources, rod.estate, rod, ev.turn)}
             ${waitNote}
             ${nextBtnHtml}
           </div>`;
@@ -340,27 +368,64 @@ function bindRodScreen(){
       busy = true;
       const rodName = currentRod;
       const choice = ev.choices.find(c=>c.key===btn.dataset.key);
+      // R7/R8: все формулы — по ресурсам на момент клика, до любых изменений этим выбором
+      const res0 = rod.resources;
+      const druzhina = druzhinaOf(res0);
+      const eff = choice.effect || {};
+      // Сословный эффект — плоский объект: {slava/krestyane/zoloto, text?, income?} (см. vec estateMerge)
+      const estateObj = choice.effectByEstate && choice.effectByEstate[rod.estate];
+      // Прибавка к доходу может быть общей (effect.income) или сословной (effectByEstate[сословие].income)
+      const incSpec = eff.income || (estateObj && estateObj.income) || null;
+      // Посул: от знатности до выбора (R7)
+      const bribePaid = eff.bribe !== undefined ? bribeCost(eff.bribe, res0.slava) : 0;
+      // Военный расчёт (R9): от душ до выбора, со снижениями потерь, накопленными родом ранее
+      const reductions = rod.casualtyReduction ? [rod.casualtyReduction] : [];
+      const mil = choice.military ? computeMilitary(res0.krestyane, choice.military, reductions) : null;
+      // Флаги, которые ставит выбор, — сразу видны условным эффектам
+      const flagsAfter = Object.assign({}, rod.flags);
+      (choice.setFlags || []).forEach(flag => { flagsAfter[flag] = true; });
+      const rodForConds = {flags: flagsAfter, estate: rod.estate, resources: res0};
+      // Слияние (R8): общий эффект + эффект сословия + условная добавка + военные эффекты + посул — один раз
+      let combined = resolveEffect(choice, rodForConds, druzhina);
+      if(mil){
+        for(const k in mil.scaleEffect) combined[k] = (combined[k] || 0) + mil.scaleEffect[k];
+        if(mil.lost) combined.krestyane = (combined.krestyane || 0) - mil.lost;
+      }
+      if(bribePaid) combined.zoloto = (combined.zoloto || 0) - bribePaid;
+      // Снимок исхода (ТЗ 1.1): только чистые тексты и готовые числа, без формул и механики
+      const ce = findConditionalEffect(choice, rodForConds);
+      let estateText = estateObj && estateObj.text ? estateObj.text : '';
+      if(ce && ce.text) estateText = estateText ? estateText + ' ' + ce.text : ce.text;
+      const answerRecord = {
+        choiceKey: choice.key,
+        outcome: {
+          title: ce && ce.outcomeTextOverride ? (ce.outcomeTitleOverride || choice.outcomeTitle) : choice.outcomeTitle,
+          text: ce && ce.outcomeTextOverride ? ce.outcomeTextOverride : choice.outcomeText,
+          estateText: estateText,
+          deltas: combined,
+          ...(mil ? {military: {due: mil.due, fielded: mil.fielded, lost: mil.lost}} : {}),
+          ...(incSpec ? {income: {amount: incSpec.amount, until: incSpec.until}} : {})
+        }
+      };
       // Ответ ставится транзакцией «только если ещё нет»: с двух устройств одного рода эффект применится один раз
-      const answerRecord = {choiceKey: choice.key};
-      const druzhina = druzhinaOf(rod.resources);
-      if(ev.choices.some(c=>c.druzhinaTiers)) answerRecord.druzhina = druzhina; // фиксируем, чтобы экран исхода показал те же цифры
       const claimed = await dbClaim(`rods/${rodName}/answers/${ev.id}`, answerRecord);
       if(claimed){
         const updates = {};
         if(ev.type !== 'normal') updates[`rods/${rodName}/votes/${ev.id}`] = choice.key;
-        const flagsAfter = Object.assign({}, rod.flags);
         (choice.setFlags || []).forEach(flag => {
           updates[`rods/${rodName}/flags/${flag}`] = true;
-          flagsAfter[flag] = true;
         });
         if(Object.keys(updates).length) await dbUpdate(updates);
-        const baseEffect = resolveEffect(choice, rod, druzhina);
-        const activeConditional = findConditionalEffect(choice, {flags: flagsAfter});
-        await txResources(rodName, res => {
-          let out = applyEffect(res, baseEffect);
-          if(activeConditional && activeConditional.effect) out = applyEffect(out, activeConditional.effect);
-          return out;
-        });
+        // Все эффекты применяются один раз; пол душ — внутри applyEffect (R8)
+        await txResources(rodName, res => applyEffect(res, combined));
+        // Постоянная прибавка к доходу / отмена (R6): одинаковый ключ перезаписывает, отмена убирает сразу
+        if(incSpec) await dbSet(`rods/${rodName}/incomeMods/${incSpec.key}`, {amount: incSpec.amount, ...(incSpec.until !== undefined ? {until: incSpec.until} : {})});
+        if(eff.incomeEnd){
+          const ends = Array.isArray(eff.incomeEnd) ? eff.incomeEnd : [eff.incomeEnd];
+          for(const k of ends) await dbSet(`rods/${rodName}/incomeMods/${k}`, null);
+        }
+        // Снижение потерь на будущее накапливается (для последующих военных ходов)
+        if(eff.casualtyReduction) await dbTx(`rods/${rodName}/casualtyReduction`, cur => (cur || 0) + eff.casualtyReduction);
         if(choice.hiddenFavor){
           await dbTx(`rods/${rodName}/favor/${choice.hiddenFavor.track}`, cur => (cur || 0) + choice.hiddenFavor.value);
         }
@@ -426,12 +491,38 @@ function bindRodScreen(){
         const step = await dbTx(`rods/${rodName}/progress`, cur => (cur === null ? 0 : cur) === fromIdx ? fromIdx + 1 : undefined);
         // Уход с assembly — не игровой ход: ни тика, ни наград
         if(step.committed && !leavingAssembly){
-          // 1) эффект narrative-события, 2) тик экономики — одной транзакцией по актуальным ресурсам
+          const isNarrative = ev.type === 'narrative';
+          // Мировой эффект narrative-события (стабильность/централизация) — один раз на всю игру (R14)
+          if(isNarrative && ev.nationalEffect){
+            if(await dbClaim('nationalEffects/' + ev.id, true)) await txNational(ev.nationalEffect);
+          }
+          // Отмена прибавок к доходу (R6): снимаются до тика этого же хода, в БД — навсегда
+          if(isNarrative && ev.incomeEnd){
+            const ends = Array.isArray(ev.incomeEnd) ? ev.incomeEnd : [ev.incomeEnd];
+            for(const k of ends) await dbSet(`rods/${rodName}/incomeMods/${k}`, null);
+          }
+          // 1) эффект narrative-события, 2) тик экономики хода ev.turn — одной транзакцией по актуальным ресурсам.
+          // Прибавки к доходу берутся из локальной копии без отменённых ключей, чтобы тик этого хода их уже не считал.
           const applied = await txResources(rodName, res => {
-            const tmp = {resources: res, estate: rod.estate};
-            if(ev.type === 'narrative') tmp.resources = applyEffect(tmp.resources, resolveEffect(ev, rod));
-            applyEconomyTick(tmp);
-            return tmp.resources;
+            const modsNow = Object.assign({}, rod.incomeMods);
+            if(isNarrative && ev.incomeEnd){
+              (Array.isArray(ev.incomeEnd) ? ev.incomeEnd : [ev.incomeEnd]).forEach(k => delete modsNow[k]);
+            }
+            let res2 = res;
+            if(isNarrative){
+              const eff = resolveEffect(ev, rod);
+              // Военная ветка narrative-события (опричники на ходе 17): расчёт по душам на момент применения (R9)
+              const branch = findConditionalEffect(ev, rod);
+              if(branch && branch.military){
+                const mil = computeMilitary(res.krestyane, branch.military, rod.casualtyReduction ? [rod.casualtyReduction] : []);
+                for(const k in mil.scaleEffect) eff[k] = (eff[k] || 0) + mil.scaleEffect[k];
+                if(mil.lost) eff.krestyane = (eff.krestyane || 0) - mil.lost;
+              }
+              res2 = applyEffect(res2, eff);
+            }
+            const shim = {resources: res2, estate: rod.estate, incomeMods: modsNow};
+            applyEconomyTick(shim, ev.turn);
+            return shim.resources;
           });
           // 3) награды за пересечённые пороги знатности: каждый порог выдаётся один раз (метка ставится транзакцией)
           const slavaNow = applied.value ? applied.value.slava : rod.resources.slava;

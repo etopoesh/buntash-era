@@ -1,0 +1,1110 @@
+{
+ "_readme": "Эталонные значения для проверки расчётов. Все формулы описаны в ТЗ 20, раздел 3. Ожидаемые числа посчитаны независимо от кода сайта. Порядок в тике: доход от душ ДО бегства, затем бегство. Округление: половина вверх, считается по модулю числа.",
+ "druzhina": [
+  {
+   "souls": 20,
+   "expected": 1
+  },
+  {
+   "souls": 39,
+   "expected": 1
+  },
+  {
+   "souls": 40,
+   "expected": 2
+  },
+  {
+   "souls": 119,
+   "expected": 5
+  },
+  {
+   "souls": 120,
+   "expected": 6
+  },
+  {
+   "souls": 199,
+   "expected": 9
+  },
+  {
+   "souls": 200,
+   "expected": 10
+  },
+  {
+   "souls": 201,
+   "expected": 10
+  },
+  {
+   "souls": 399,
+   "expected": 19
+  },
+  {
+   "souls": 400,
+   "expected": 20
+  }
+ ],
+ "roundHalfUp": [
+  {
+   "x": 0.4999,
+   "expected": 0
+  },
+  {
+   "x": 0.5,
+   "expected": 1
+  },
+  {
+   "x": 1.5,
+   "expected": 2
+  },
+  {
+   "x": 2.4,
+   "expected": 2
+  },
+  {
+   "x": 2.5,
+   "expected": 3
+  },
+  {
+   "x": 2.6,
+   "expected": 3
+  },
+  {
+   "x": 7.5,
+   "expected": 8
+  },
+  {
+   "x": 10.0,
+   "expected": 10
+  }
+ ],
+ "flight": [
+  {
+   "souls": 200,
+   "estate": "boyare",
+   "centralization": 10,
+   "stability": 10,
+   "expected": {
+    "pct": 0,
+    "loss": 0,
+    "soulsAfter": 200
+   }
+  },
+  {
+   "souls": 200,
+   "estate": "dvoryane",
+   "centralization": 4,
+   "stability": 10,
+   "expected": {
+    "pct": 4,
+    "loss": 8,
+    "soulsAfter": 192
+   }
+  },
+  {
+   "souls": 200,
+   "estate": "boyare",
+   "centralization": 4,
+   "stability": 10,
+   "expected": {
+    "pct": 2,
+    "loss": 4,
+    "soulsAfter": 196
+   }
+  },
+  {
+   "souls": 200,
+   "estate": "boyare",
+   "centralization": 10,
+   "stability": 4,
+   "expected": {
+    "pct": 3,
+    "loss": 6,
+    "soulsAfter": 194
+   }
+  },
+  {
+   "souls": 200,
+   "estate": "boyare",
+   "centralization": 10,
+   "stability": 2,
+   "expected": {
+    "pct": 6,
+    "loss": 12,
+    "soulsAfter": 188
+   }
+  },
+  {
+   "souls": 200,
+   "estate": "dvoryane",
+   "centralization": 4,
+   "stability": 2,
+   "expected": {
+    "pct": 10,
+    "loss": 20,
+    "soulsAfter": 180
+   }
+  },
+  {
+   "souls": 125,
+   "estate": "boyare",
+   "centralization": 4,
+   "stability": 10,
+   "expected": {
+    "pct": 2,
+    "loss": 3,
+    "soulsAfter": 122
+   }
+  },
+  {
+   "souls": 215,
+   "estate": "boyare",
+   "centralization": 10,
+   "stability": 4,
+   "expected": {
+    "pct": 3,
+    "loss": 6,
+    "soulsAfter": 209
+   }
+  },
+  {
+   "souls": 21,
+   "estate": "dvoryane",
+   "centralization": 4,
+   "stability": 2,
+   "expected": {
+    "pct": 10,
+    "loss": 2,
+    "soulsAfter": 20
+   }
+  },
+  {
+   "souls": 20,
+   "estate": "dvoryane",
+   "centralization": 0,
+   "stability": 0,
+   "expected": {
+    "pct": 10,
+    "loss": 2,
+    "soulsAfter": 20
+   }
+  },
+  {
+   "souls": 200,
+   "estate": "dvoryane",
+   "centralization": 5,
+   "stability": 5,
+   "expected": {
+    "pct": 0,
+    "loss": 0,
+    "soulsAfter": 200
+   }
+  },
+  {
+   "souls": 200,
+   "estate": "boyare",
+   "centralization": 10,
+   "stability": 3,
+   "expected": {
+    "pct": 3,
+    "loss": 6,
+    "soulsAfter": 194
+   }
+  },
+  {
+   "souls": 200,
+   "estate": "dvoryane",
+   "centralization": 4,
+   "stability": 10,
+   "expected": {
+    "pct": 4,
+    "loss": 8,
+    "soulsAfter": 192
+   }
+  }
+ ],
+ "tick": [
+  {
+   "souls": 200,
+   "gold": 300,
+   "estate": "boyare",
+   "centralization": 10,
+   "stability": 10,
+   "incomeMods": [],
+   "expected": {
+    "income": 200,
+    "goldAfter": 500,
+    "flightPct": 0,
+    "flightLoss": 0,
+    "soulsAfter": 200
+   }
+  },
+  {
+   "souls": 200,
+   "gold": 300,
+   "estate": "dvoryane",
+   "centralization": 4,
+   "stability": 2,
+   "incomeMods": [
+    30
+   ],
+   "expected": {
+    "income": 230,
+    "goldAfter": 530,
+    "flightPct": 10,
+    "flightLoss": 20,
+    "soulsAfter": 180
+   }
+  },
+  {
+   "souls": 150,
+   "gold": 0,
+   "estate": "boyare",
+   "centralization": 4,
+   "stability": 4,
+   "incomeMods": [
+    -30,
+    50
+   ],
+   "expected": {
+    "income": 170,
+    "goldAfter": 170,
+    "flightPct": 5,
+    "flightLoss": 8,
+    "soulsAfter": 142
+   }
+  },
+  {
+   "souls": 20,
+   "gold": 10,
+   "estate": "dvoryane",
+   "centralization": 2,
+   "stability": 2,
+   "incomeMods": [],
+   "expected": {
+    "income": 20,
+    "goldAfter": 30,
+    "flightPct": 10,
+    "flightLoss": 2,
+    "soulsAfter": 20
+   }
+  }
+ ],
+ "bribe": [
+  {
+   "base": 200,
+   "slava": -5,
+   "expectedCost": 225
+  },
+  {
+   "base": 200,
+   "slava": 0,
+   "expectedCost": 200
+  },
+  {
+   "base": 200,
+   "slava": 10,
+   "expectedCost": 150
+  },
+  {
+   "base": 200,
+   "slava": 30,
+   "expectedCost": 50
+  },
+  {
+   "base": 200,
+   "slava": 31,
+   "expectedCost": 50
+  },
+  {
+   "base": 200,
+   "slava": 40,
+   "expectedCost": 50
+  },
+  {
+   "base": 200,
+   "slava": 100,
+   "expectedCost": 50
+  },
+  {
+   "base": 100,
+   "slava": 10,
+   "expectedCost": 50
+  },
+  {
+   "base": 100,
+   "slava": 20,
+   "expectedCost": 50
+  },
+  {
+   "base": 300,
+   "slava": 10,
+   "expectedCost": 250
+  }
+ ],
+ "military": [
+  {
+   "case": {
+    "souls": 200,
+    "deploy": 1,
+    "casualties": 0.25,
+    "reductions": []
+   },
+   "expected": {
+    "due": 10,
+    "fielded": 10,
+    "missing": 0,
+    "lost": 3,
+    "soulsAfterLosses": 197,
+    "scaleEffect": {}
+   }
+  },
+  {
+   "case": {
+    "souls": 200,
+    "deploy": 0.5,
+    "casualties": 0.5,
+    "reductions": []
+   },
+   "expected": {
+    "due": 10,
+    "fielded": 5,
+    "missing": 5,
+    "lost": 3,
+    "soulsAfterLosses": 197,
+    "scaleEffect": {}
+   }
+  },
+  {
+   "case": {
+    "souls": 200,
+    "deploy": 0,
+    "casualties": 0,
+    "reductions": []
+   },
+   "expected": {
+    "due": 10,
+    "fielded": 0,
+    "missing": 10,
+    "lost": 0,
+    "soulsAfterLosses": 200,
+    "scaleEffect": {}
+   }
+  },
+  {
+   "case": {
+    "souls": 60,
+    "deploy": 1,
+    "casualties": 0.25,
+    "reductions": []
+   },
+   "expected": {
+    "due": 3,
+    "fielded": 3,
+    "missing": 0,
+    "lost": 1,
+    "soulsAfterLosses": 59,
+    "scaleEffect": {}
+   }
+  },
+  {
+   "case": {
+    "souls": 20,
+    "deploy": 1,
+    "casualties": 0.25,
+    "reductions": []
+   },
+   "expected": {
+    "due": 1,
+    "fielded": 1,
+    "missing": 0,
+    "lost": 1,
+    "soulsAfterLosses": 20,
+    "scaleEffect": {}
+   }
+  },
+  {
+   "case": {
+    "souls": 200,
+    "deploy": 1,
+    "casualties": 0.25,
+    "reductions": [
+     0.25
+    ]
+   },
+   "expected": {
+    "due": 10,
+    "fielded": 10,
+    "missing": 0,
+    "lost": 2,
+    "soulsAfterLosses": 198,
+    "scaleEffect": {}
+   }
+  },
+  {
+   "case": {
+    "souls": 200,
+    "deploy": 1,
+    "casualties": 0.25,
+    "reductions": [
+     0.25,
+     0.25
+    ]
+   },
+   "expected": {
+    "due": 10,
+    "fielded": 10,
+    "missing": 0,
+    "lost": 1,
+    "soulsAfterLosses": 199,
+    "scaleEffect": {}
+   }
+  },
+  {
+   "case": {
+    "souls": 200,
+    "deploy": 1,
+    "casualties": 0.25,
+    "reductions": [
+     0.25,
+     0.25,
+     0.25
+    ]
+   },
+   "expected": {
+    "due": 10,
+    "fielded": 10,
+    "missing": 0,
+    "lost": 1,
+    "soulsAfterLosses": 199,
+    "scaleEffect": {}
+   }
+  },
+  {
+   "case": {
+    "souls": 200,
+    "deploy": 1,
+    "casualties": 0.25,
+    "reductions": [
+     0.25,
+     0.25,
+     0.25,
+     0.25
+    ]
+   },
+   "expected": {
+    "due": 10,
+    "fielded": 10,
+    "missing": 0,
+    "lost": 1,
+    "soulsAfterLosses": 199,
+    "scaleEffect": {}
+   }
+  },
+  {
+   "case": {
+    "souls": 130,
+    "deploy": 0.5,
+    "casualties": 0.25,
+    "reductions": []
+   },
+   "expected": {
+    "due": 6,
+    "fielded": 3,
+    "missing": 3,
+    "lost": 1,
+    "soulsAfterLosses": 129,
+    "scaleEffect": {}
+   }
+  },
+  {
+   "case": {
+    "souls": 190,
+    "deploy": 1,
+    "casualties": 0.25,
+    "reductions": [],
+    "scale": [
+     {
+      "by": "fielded",
+      "every": 2,
+      "effect": {
+       "slava": 1
+      }
+     }
+    ]
+   },
+   "expected": {
+    "due": 9,
+    "fielded": 9,
+    "missing": 0,
+    "lost": 2,
+    "soulsAfterLosses": 188,
+    "scaleEffect": {
+     "slava": 4
+    }
+   }
+  },
+  {
+   "case": {
+    "souls": 200,
+    "deploy": 0.5,
+    "casualties": 0,
+    "reductions": [],
+    "scale": [
+     {
+      "by": "missing",
+      "every": 1,
+      "effect": {
+       "zoloto": -5
+      }
+     }
+    ]
+   },
+   "expected": {
+    "due": 10,
+    "fielded": 5,
+    "missing": 5,
+    "lost": 0,
+    "soulsAfterLosses": 200,
+    "scaleEffect": {
+     "zoloto": -25
+    }
+   }
+  },
+  {
+   "case": {
+    "souls": 200,
+    "deploy": 0,
+    "casualties": 0,
+    "reductions": [],
+    "scale": [
+     {
+      "by": "due",
+      "every": 1,
+      "effect": {
+       "zoloto": -10
+      }
+     }
+    ]
+   },
+   "expected": {
+    "due": 10,
+    "fielded": 0,
+    "missing": 10,
+    "lost": 0,
+    "soulsAfterLosses": 200,
+    "scaleEffect": {
+     "zoloto": -100
+    }
+   }
+  },
+  {
+   "case": {
+    "souls": 200,
+    "deploy": 1,
+    "casualties": 0,
+    "reductions": [],
+    "scale": [
+     {
+      "by": "extra",
+      "every": 1,
+      "effect": {
+       "krestyane": -1,
+       "zoloto": 10
+      }
+     }
+    ]
+   },
+   "expected": {
+    "due": 10,
+    "fielded": 10,
+    "missing": 0,
+    "lost": 0,
+    "soulsAfterLosses": 200,
+    "scaleEffect": {
+     "krestyane": -5,
+     "zoloto": 50
+    }
+   }
+  },
+  {
+   "case": {
+    "souls": 79,
+    "deploy": 1,
+    "casualties": 0,
+    "reductions": [],
+    "scale": [
+     {
+      "by": "extra",
+      "every": 1,
+      "effect": {
+       "zoloto": 10
+      }
+     }
+    ]
+   },
+   "expected": {
+    "due": 3,
+    "fielded": 3,
+    "missing": 0,
+    "lost": 0,
+    "soulsAfterLosses": 79,
+    "scaleEffect": {
+     "zoloto": 10
+    }
+   }
+  },
+  {
+   "case": {
+    "souls": 39,
+    "deploy": 1,
+    "casualties": 0,
+    "reductions": [],
+    "scale": [
+     {
+      "by": "extra",
+      "every": 1,
+      "effect": {
+       "zoloto": 10
+      }
+     }
+    ]
+   },
+   "expected": {
+    "due": 1,
+    "fielded": 1,
+    "missing": 0,
+    "lost": 0,
+    "soulsAfterLosses": 39,
+    "scaleEffect": {
+     "zoloto": 0
+    }
+   }
+  }
+ ],
+ "estateMerge": [
+  {
+   "effect": {
+    "slava": 2,
+    "krestyane": -20,
+    "zoloto": -50
+   },
+   "byEstate": {
+    "dvoryane": {
+     "slava": 1,
+     "text": "x"
+    }
+   },
+   "estate": "dvoryane",
+   "expected": {
+    "slava": 3,
+    "krestyane": -20,
+    "zoloto": -50
+   }
+  },
+  {
+   "effect": {
+    "slava": 2,
+    "krestyane": -20,
+    "zoloto": -50
+   },
+   "byEstate": {
+    "dvoryane": {
+     "slava": 1,
+     "text": "x"
+    }
+   },
+   "estate": "boyare",
+   "expected": {
+    "slava": 2,
+    "krestyane": -20,
+    "zoloto": -50
+   }
+  },
+  {
+   "effect": {
+    "slava": 1
+   },
+   "byEstate": {
+    "boyare": {
+     "zoloto": 30
+    }
+   },
+   "estate": "dvoryane",
+   "expected": {
+    "slava": 1
+   }
+  }
+ ],
+ "majority": [
+  {
+   "rods": 10,
+   "votes": {
+    "1": 6,
+    "2": 4
+   },
+   "expectedWinner": "1"
+  },
+  {
+   "rods": 10,
+   "votes": {
+    "1": 5,
+    "2": 5
+   },
+   "expectedWinner": null
+  },
+  {
+   "rods": 10,
+   "votes": {
+    "1": 4,
+    "2": 3,
+    "3": 3
+   },
+   "expectedWinner": null
+  },
+  {
+   "rods": 10,
+   "votes": {
+    "1": 5,
+    "2": 3,
+    "3": 2
+   },
+   "expectedWinner": null
+  },
+  {
+   "rods": 10,
+   "votes": {
+    "1": 6,
+    "2": 2,
+    "3": 2
+   },
+   "expectedWinner": "1"
+  },
+  {
+   "rods": 3,
+   "votes": {
+    "1": 2,
+    "2": 1
+   },
+   "expectedWinner": "1"
+  },
+  {
+   "rods": 1,
+   "votes": {
+    "1": 1
+   },
+   "expectedWinner": "1"
+  },
+  {
+   "rods": 2,
+   "votes": {
+    "1": 1,
+    "2": 1
+   },
+   "expectedWinner": null
+  },
+  {
+   "rods": 7,
+   "votes": {
+    "1": 4,
+    "2": 3
+   },
+   "expectedWinner": "1"
+  },
+  {
+   "rods": 4,
+   "votes": {
+    "1": 2,
+    "2": 2
+   },
+   "expectedWinner": null
+  },
+  {
+   "rods": 10,
+   "answered": 6,
+   "forced": true,
+   "votes": {
+    "1": 4,
+    "2": 2
+   },
+   "expectedWinner": "1"
+  },
+  {
+   "rods": 10,
+   "answered": 4,
+   "forced": true,
+   "votes": {
+    "1": 2,
+    "2": 2
+   },
+   "expectedWinner": null
+  }
+ ],
+ "milestones": [
+  {
+   "slava": 24,
+   "alreadySeen": [],
+   "expected": {
+    "granted": [],
+    "soulsDelta": 0
+   }
+  },
+  {
+   "slava": 26,
+   "alreadySeen": [],
+   "expected": {
+    "granted": [
+     25
+    ],
+    "soulsDelta": 52
+   }
+  },
+  {
+   "slava": 60,
+   "alreadySeen": [],
+   "expected": {
+    "granted": [
+     25,
+     50
+    ],
+    "soulsDelta": 99
+   }
+  },
+  {
+   "slava": 60,
+   "alreadySeen": [
+    25
+   ],
+   "expected": {
+    "granted": [
+     50
+    ],
+    "soulsDelta": 47
+   }
+  },
+  {
+   "slava": 500,
+   "alreadySeen": [],
+   "expected": {
+    "granted": [
+     25,
+     50,
+     75,
+     200,
+     500
+    ],
+    "soulsDelta": 257
+   }
+  },
+  {
+   "slava": 500,
+   "alreadySeen": [
+    25,
+    50,
+    75,
+    200
+   ],
+   "expected": {
+    "granted": [
+     500
+    ],
+    "soulsDelta": 55
+   }
+  },
+  {
+   "slava": 10,
+   "alreadySeen": [],
+   "expected": {
+    "granted": [],
+    "soulsDelta": 0
+   }
+  }
+ ],
+ "milestoneTable": [
+  {
+   "slava": 25,
+   "souls": 52
+  },
+  {
+   "slava": 50,
+   "souls": 47
+  },
+  {
+   "slava": 75,
+   "souls": 58
+  },
+  {
+   "slava": 200,
+   "souls": 45
+  },
+  {
+   "slava": 500,
+   "souls": 55
+  }
+ ],
+ "soulsFloor": [
+  {
+   "souls": 50,
+   "effectSouls": -100,
+   "expected": 20
+  },
+  {
+   "souls": 200,
+   "effectSouls": -180,
+   "expected": 20
+  },
+  {
+   "souls": 200,
+   "effectSouls": -181,
+   "expected": 20
+  },
+  {
+   "souls": 200,
+   "effectSouls": -20,
+   "expected": 180
+  }
+ ],
+ "incomeLifecycle": {
+  "description": "Душ постоянно 200, бегства нет. На ходе t05 вариант добавляет прибавку A (+30, until t08, включительно). На ходе t07 добавляет B (+20, без срока). На ходе t09 вариант отменяет B. Прибавка действует уже на тике того же хода, где её поставили. Одинаковый key перезаписывает, а не складывается.",
+  "tickIncomes": {
+   "t05": 230,
+   "t06": 230,
+   "t07": 250,
+   "t08": 250,
+   "t09": 200,
+   "t10": 200
+  },
+  "overwriteCase": {
+   "description": "На t05 ставят A=+30, на t06 ставят A=+50. Доход на тике t06:",
+   "expectedIncomeT06": 250
+  }
+ },
+ "finalRanking": {
+  "rods": [
+   {
+    "name": "A",
+    "slava": 30,
+    "souls": 100
+   },
+   {
+    "name": "B",
+    "slava": 30,
+    "souls": 150
+   },
+   {
+    "name": "C",
+    "slava": 45,
+    "souls": 50
+   },
+   {
+    "name": "D",
+    "slava": 30,
+    "souls": 150
+   }
+  ],
+  "expectedOrder": [
+   "C",
+   "B",
+   "D",
+   "A"
+  ],
+  "rule": "знатность по убыванию, затем души по убыванию, затем имя по алфавиту"
+ },
+ "worldVerdict": [
+  {
+   "centralization": 11,
+   "stability": 10,
+   "strongPower": true,
+   "boyarFreedom": false,
+   "unrest": false
+  },
+  {
+   "centralization": 10,
+   "stability": 10,
+   "strongPower": false,
+   "boyarFreedom": false,
+   "unrest": false
+  },
+  {
+   "centralization": 5,
+   "stability": 5,
+   "strongPower": false,
+   "boyarFreedom": false,
+   "unrest": false
+  },
+  {
+   "centralization": 4,
+   "stability": 4,
+   "strongPower": false,
+   "boyarFreedom": true,
+   "unrest": true
+  },
+  {
+   "centralization": 12,
+   "stability": 3,
+   "strongPower": true,
+   "boyarFreedom": false,
+   "unrest": true
+  }
+ ],
+ "startState": {
+  "slava": 10,
+  "krestyane": 200,
+  "zoloto": 300,
+  "stability": 10,
+  "centralization": 10,
+  "sameForBothEstates": true
+ },
+ "eventsLint": {
+  "expectedTotal": 64,
+  "order": "gate; turns 1-25; gate; turns 26-42; gate; turns 43-60; gate(final)",
+  "positions": {
+   "gateIndexes": [
+    0,
+    26,
+    44,
+    63
+   ],
+   "turnRanges": {
+    "1-25": [
+     1,
+     25
+    ],
+    "26-42": [
+     27,
+     43
+    ],
+    "43-60": [
+     45,
+     62
+    ]
+   }
+  },
+  "types": {
+   "gate": 4,
+   "narrative": 3,
+   "normal": 57
+  },
+  "narrativeTurns": [
+   17,
+   23,
+   60
+  ],
+  "forbiddenInTextFields": [
+   "[+\\-−–]\\s*\\d+\\s*(душ|рубл|знатност|стабильност|централизац)",
+   "посул",
+   "за кажд",
+   "Дворяне:",
+   "Бояре:",
+   "если выбрало большинство",
+   "Ход\\s*\\d+\\s*:",
+   "каждый ход",
+   "не менее"
+  ],
+  "textFields": [
+   "description",
+   "label",
+   "outcomeText",
+   "text",
+   "narrative"
+  ]
+ }
+}

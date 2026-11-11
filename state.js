@@ -26,19 +26,28 @@ let sortBy = 'slava'; // 'slava' | 'krestyane' | 'zoloto' — выбор вед�
 let selectedEstate = null;
 let showHistory = false; // переключатель "История" на экране рода
 
-// Крестьяне считаются в процентах от текущего числа (не могут уйти в минус),
-// деньги и слава — обычными числами (могут уйти в минус).
+// Ресурсные ключи эффектов: только они применяются к ресурсам и показываются игроку.
+// Спецключи выбора (bribe, income, incomeEnd, casualtyReduction) лежат в том же объекте effect,
+// но ресурсами не являются и везде отфильтровываются.
+const RESOURCE_KEYS = ['slava', 'krestyane', 'zoloto'];
+
+// Чистая ресурсная часть эффекта (без спецключей) — для слияния и применения.
+function resourceEffect(effect){
+  const out = {};
+  if(!effect) return out;
+  RESOURCE_KEYS.forEach(k => { if(effect[k] !== undefined) out[k] = effect[k]; });
+  return out;
+}
+
+// Дельты ресурсов для игрока: «Знатность +3», «Души −20», «Золото −200».
+// Души — абсолютные числа (не проценты). Неизвестные ключи не показываются.
 function fmtDelta(effect){
-  const labels = {slava:'Царская милость', zoloto:'Золото'};
+  const labels = {slava:'Знатность', zoloto:'Золото', krestyane:'Души'};
   const parts = [];
   for(const k in effect){
-    if(!effect[k]) continue;
+    if(!labels[k] || !effect[k]) continue;
     const v = effect[k];
-    if(k === 'krestyane'){
-      parts.push(`<span class="effect-line ${v>0?'pos':'neg'}">${v>0?'+':''}${v}% Крестьяне</span>`);
-    } else {
-      parts.push(`<span class="effect-line ${v>0?'pos':'neg'}">${v>0?'+':''}${v} ${labels[k]}</span>`);
-    }
+    parts.push(`<span class="effect-line ${v>0?'pos':'neg'}">${v>0?'+':''}${v} ${labels[k]}</span>`);
   }
   return parts.join(' &nbsp; ');
 }
@@ -57,10 +66,11 @@ function fmtNationalDelta(effect){
 }
 
 // Итоговый эффект источника (narrative-события или выбора) для конкретного рода:
-// общий effect плюс effectByEstate[rod.estate], если есть. Значения по одинаковым ключам суммируются.
+// общий effect + effectByEstate[rod.estate] + первый подходящий условный эффект.
+// Значения по одинаковым ключам суммируются (R10). Спецключи отфильтрованы.
 function resolveEffect(source, rod, druzhina){
   const out = {};
-  const add = eff => { if(!eff) return; for(const k in eff){ out[k] = (out[k] || 0) + eff[k]; } };
+  const add = eff => { const re = resourceEffect(eff); for(const k in re){ out[k] = (out[k] || 0) + re[k]; } };
   add(source && source.effect);
   add(source && source.effectByEstate && rod && source.effectByEstate[rod.estate]);
   // Ступень дружины: берётся дружина на момент выбора (druzhina), а если не передана — текущая по крестьянам рода
@@ -68,6 +78,9 @@ function resolveEffect(source, rod, druzhina){
     const tier = findDruzhinaTier(source, druzhina === undefined ? druzhinaOf(rod.resources) : druzhina);
     if(tier) add(tier.effect);
   }
+  // Условная добавка (первый подходящий элемент conditionalEffects)
+  const ce = findConditionalEffect(source, rod);
+  if(ce) add(ce.effect);
   return out;
 }
 
@@ -95,15 +108,16 @@ function arrivalBonusKey(ev, i){
   return i === 0 ? ev.id : ev.id + ':' + i;
 }
 
+// Применение ресурсного эффекта: применяются только ресурсные ключи (спецключи игнорируются),
+// души — абсолютные числа, после применения не ниже 20 (R8).
 function applyEffect(res, effect){
   const out = {...res};
-  for(const k in effect){
-    if(k === 'krestyane'){
-      out.krestyane = Math.round(out.krestyane * (1 + effect.krestyane/100));
-    } else {
-      out[k] = (out[k]||0) + effect[k];
-    }
-  }
+  const eff = resourceEffect(effect);
+  RESOURCE_KEYS.forEach(k => {
+    if(eff[k] === undefined) return;
+    out[k] = (out[k] || 0) + eff[k];
+  });
+  if(out.krestyane < 20) out.krestyane = 20;
   return out;
 }
 
@@ -159,6 +173,8 @@ function patchRod(rod){
   if (!rod.titles) rod.titles = {};
   if (!rod.favor) rod.favor = {};
   if (!rod.flags) rod.flags = {};
+  if (!rod.incomeMods) rod.incomeMods = {};
+  if (typeof rod.casualtyReduction !== 'number') rod.casualtyReduction = 0;
   if (!rod.seenArrivalBonus) rod.seenArrivalBonus = {};
   if (!rod.seenMilestones) rod.seenMilestones = {};
   return rod;
@@ -180,10 +196,21 @@ function pendingMilestones(rod, slava){
   return SLAVA_MILESTONES.filter(m => s >= m.threshold && !seen[m.threshold]);
 }
 
-// Ищет первый элемент choice.conditionalEffects, чей requiresFlag стоит у рода.
-function findConditionalEffect(choice, rod){
-  if (!choice.conditionalEffects) return null;
-  return choice.conditionalEffects.find(ce => ce.requiresFlag && rod.flags && rod.flags[ce.requiresFlag]) || null;
+// Первый подходящий элемент conditionalEffects (у выбора или события). Условия:
+// requiresFlag — флаг стоит у рода; requiresEstate — совпадает сословие рода;
+// minSlava — знатность рода не ниже порога (проверяется по ресурсам на момент вызова).
+// Элемент без условий подходит всегда (ветка «по умолчанию») — в данных ставить её последней.
+function findConditionalEffect(source, rod){
+  if (!source || !source.conditionalEffects) return null;
+  const flags = (rod && rod.flags) || {};
+  const estate = rod && rod.estate;
+  const slava = rod && rod.resources ? (rod.resources.slava || 0) : 0;
+  return source.conditionalEffects.find(ce => {
+    if(ce.requiresFlag && !flags[ce.requiresFlag]) return false;
+    if(ce.requiresEstate && ce.requiresEstate !== estate) return false;
+    if(ce.minSlava !== undefined && slava < ce.minSlava) return false;
+    return true;
+  }) || null;
 }
 
 // Предохранитель: приводит объект аукциона к полной форме (используется и в render(), и в boot())
@@ -199,27 +226,80 @@ function patchAuction(auction){
 // (applyEconomyTick), и прикидка «Хозяйство за ход» на экране рода, формулы не дублируются.
 // Возвращает составляющие: бегство от централизации и от стабильности (%), крестьян до/после (с полом 20),
 // их изменение и доход золота.
-function computeEconomyTick(resources, estate, national){
+function computeEconomyTick(resources, estate, national, incomeMods){
   const nat = national || {stability: 10, centralization: 10};
   const krestyaneBefore = resources.krestyane;
-  const zolotoDelta = Math.round(krestyaneBefore * 0.15);
+  const mods = Array.isArray(incomeMods) ? incomeMods : [];
+  const income = krestyaneBefore * 1 + mods.reduce((a, b) => a + b, 0);
 
-  // Бегство от централизации: ниже 8 — дворяне 4%, бояре 2%; иначе 0
-  const fleeCentralPct = nat.centralization < 8 ? (estate === 'boyare' ? 2 : 4) : 0;
-  // Бегство от стабильности — ступенями: ниже 3 → 6%, от 3 до 7 → 3%, от 8 и выше → 0%
-  const fleeStabilityPct = nat.stability < 3 ? 6 : (nat.stability < 8 ? 3 : 0);
+  // Бегство от централизации: ниже 5 — дворяне 4%, бояре 2%; иначе 0
+  const fleeCentralPct = nat.centralization < 5 ? (estate === 'boyare' ? 2 : 4) : 0;
+  // Бегство от стабильности — ступенями: ниже 3 → 6%, от 3 до 5 → 3%, от 5 и выше → 0%
+  const fleeStabilityPct = nat.stability < 3 ? 6 : (nat.stability < 5 ? 3 : 0);
 
   const fleePct = fleeCentralPct + fleeStabilityPct;
-  let krestyaneAfter = fleePct !== 0 ? Math.round(krestyaneBefore * (1 - fleePct / 100)) : krestyaneBefore;
-  krestyaneAfter = Math.max(20, krestyaneAfter);
+  // R5: потеря считается один раз от текущих душ; округляется сама потеря, а не итог
+  const fleeLoss = fleePct !== 0 ? roundHalfUp(krestyaneBefore * fleePct / 100) : 0;
+  const krestyaneAfter = Math.max(20, krestyaneBefore - fleeLoss);
 
-  return {zolotoDelta, fleeCentralPct, fleeStabilityPct, krestyaneBefore, krestyaneAfter, krestyaneDelta: krestyaneAfter - krestyaneBefore};
+  return {zolotoDelta: income, fleeCentralPct: fleeCentralPct, fleeStabilityPct: fleeStabilityPct, fleeLoss: fleeLoss, krestyaneBefore: krestyaneBefore, krestyaneAfter: krestyaneAfter, krestyaneDelta: krestyaneAfter - krestyaneBefore};
+}
+
+function roundHalfUp(x){
+  const m = Math.abs(x);
+  const r = Math.floor(m + 0.5);
+  return x < 0 ? -r : r;
+}
+
+// Посул (R7): готовая сумма — рубли −max(50, база − 5 × знатность до выбора).
+function bribeCost(base, slava){
+  return Math.max(50, base - 5 * (slava || 0));
+}
+
+// Военный расчёт (R9), чистая функция. military = {deploy, casualties, scale},
+// scale = [{by: 'fielded'|'missing'|'due'|'extra', every, effect}], extra = floor(души ÷ 40).
+// reductions — массив долей снижения потерь (суммируются): потери × max(0, 1 − сумма).
+// Каждый погибший холоп отнимает 1 душу, души после потерь не ниже 20.
+function computeMilitary(souls, military, reductions){
+  const due = Math.floor(souls / 20);
+  const deploy = military.deploy === undefined ? 1 : military.deploy;
+  const fielded = roundHalfUp(due * deploy);
+  const missing = due - fielded;
+  const sumRed = (reductions || []).reduce((a, b) => a + b, 0);
+  const factor = Math.max(0, 1 - sumRed);
+  let lost = 0;
+  if(fielded > 0 && military.casualties > 0){
+    lost = Math.min(fielded, Math.max(1, roundHalfUp(fielded * military.casualties * factor)));
+  }
+  const soulsAfterLosses = Math.max(20, souls - lost);
+  const units = {fielded: fielded, missing: missing, due: due, extra: Math.floor(souls / 40)};
+  const scaleEffect = {};
+  (military.scale || []).forEach(s => {
+    const count = Math.floor((units[s.by] || 0) / s.every);
+    for(const k in s.effect) scaleEffect[k] = (scaleEffect[k] || 0) + s.effect[k] * count;
+  });
+  return {due, fielded, missing, lost, soulsAfterLosses, scaleEffect};
+}
+
+// Активные прибавки к доходу на тике хода turn (R6): срок until включительный —
+// на тике хода until прибавка ещё действует, со следующего нет.
+function activeIncomeMods(rod, turn){
+  const mods = (rod && rod.incomeMods) || {};
+  const out = [];
+  Object.keys(mods).forEach(key => {
+    const m = mods[key];
+    if(!m || typeof m.amount !== 'number') return;
+    if(m.until !== undefined && m.until !== null && turn > m.until) return;
+    out.push(m.amount);
+  });
+  return out;
 }
 
 // Единый тик экономики — на каждом переходе рода к следующему событию (кроме assembly), без чекпоинтов.
+// Тик принадлежит ходу turn: доход = души × 1 + сумма активных на этом ходу прибавок (R4).
 // Мутирует rod.resources и возвращает дельты.
-function applyEconomyTick(rod){
-  const t = computeEconomyTick(rod.resources, rod.estate, state.national);
+function applyEconomyTick(rod, turn){
+  const t = computeEconomyTick(rod.resources, rod.estate, state.national, activeIncomeMods(rod, turn));
   rod.resources.zoloto += t.zolotoDelta;
   rod.resources.krestyane = t.krestyaneAfter;
   return {zolotoDelta: t.zolotoDelta, krestyaneDelta: t.krestyaneDelta};
@@ -237,6 +317,7 @@ async function resolveGlobalEvent(ev){
     // Метка подсчёта ставится транзакцией «только если ещё нет»: применяет эффекты ровно одно устройство, ровно один раз
     const claimed = await dbClaim('globalResults/' + ev.id, {majorityKey});
     if(!claimed) return false;
+    if(majorityKey === null) return false; // большинства нет — мировых эффектов не будет
     const out = ev.outcomes[majorityKey];
     for(const n of rodNames){
       const myChoice = state.rods[n].votes[ev.id];
@@ -252,15 +333,24 @@ async function resolveGlobalEvent(ev){
 // Аналог resolveGlobalEvent для type:"normal" событий с choice.majorityBonus —
 // тальи личных ответов (rod.answers), без effectByChoice, только nationalEffect
 // того выбора, что набрал большинство. Мутирует state, ничего не возвращает.
-async function resolveMajorityBonus(ev){
+// opts.force — досрочный подсчёт организатором: делитель — число ответивших (R11),
+// итог запоминается окончательно. Без force ждём ответов всех родов.
+async function resolveMajorityBonus(ev, opts){
+  const force = !!(opts && opts.force);
   const key = 'mb:' + ev.id;
   if(resolvingNow[key]) return false;
   resolvingNow[key] = true;
   try {
     const rodNames = Object.keys(state.rods);
-    const majorityKey = majorityOf(ev, n => { const a = state.rods[n].answers[ev.id]; return a && a.choiceKey; });
+    const answeredOf = n => { const a = state.rods[n].answers[ev.id]; return a && a.choiceKey; };
+    const answeredCount = rodNames.filter(n => answeredOf(n)).length;
+    // Автоматический подсчёт (без force) выполняется только когда ответили все
+    if(!force && answeredCount < rodNames.length) return false;
+    const majorityKey = majorityOf(ev, answeredOf);
+    // Метка подсчёта ставится транзакцией «только если ещё нет»: эффект применяется ровно один раз (R14)
     const claimed = await dbClaim('majorityBonusResolved/' + ev.id, {majorityKey});
     if(!claimed) return false;
+    if(majorityKey === null) return true; // большинства нет — мировых эффектов не будет
     const choice = ev.choices.find(c => c.key === majorityKey);
     const nationalEffect = choice && choice.majorityBonus && choice.majorityBonus.nationalEffect;
     if(nationalEffect) await txNational(nationalEffect);
@@ -329,15 +419,45 @@ async function txNational(effect){
   });
 }
 
-// Итог большинства: ключ выбора с наибольшим числом голосов (при равенстве — первый из списка).
+// Итог большинства (R11): вариант, набравший строго больше половины голосов
+// от числа ответивших родов (при полном подсчёте ответили все — делитель равен числу родов).
+// При равенстве или отсутствии большинства возвращаем null — мировых эффектов нет.
 function majorityOf(ev, answerOf){
   const tally = {};
   ev.choices.forEach(c => tally[c.key] = 0);
-  Object.keys(state.rods).forEach(n => { const v = answerOf(n); if(v && v in tally) tally[v]++; });
-  let majorityKey = ev.choices[0].key;
+  let voters = 0;
+  Object.keys(state.rods).forEach(n => {
+    const v = answerOf(n);
+    if(v === null || v === undefined || v === false) return;
+    voters++; // род ответил — участвует в делителе, даже если его варианта уже нет в событии
+    if(v in tally) tally[v]++;
+  });
+  let majorityKey = null;
   let max = -1;
   ev.choices.forEach(c => { if(tally[c.key] > max){ max = tally[c.key]; majorityKey = c.key; } });
-  return majorityKey;
+  if(voters > 0 && max * 2 > voters) return majorityKey;
+  return null;
+}
+
+// Итоги игры (R13): рода по знатности (убыв.), затем душам (убыв.), затем имени (алфавит).
+function finalRanking(rods){
+  return Object.keys(rods).sort((a, b) => {
+    const ra = rods[a].resources || {}, rb = rods[b].resources || {};
+    if((rb.slava || 0) !== (ra.slava || 0)) return (rb.slava || 0) - (ra.slava || 0);
+    if((rb.krestyane || 0) !== (ra.krestyane || 0)) return (rb.krestyane || 0) - (ra.krestyane || 0);
+    return a < b ? -1 : (a > b ? 1 : 0);
+  });
+}
+
+// Вердикт державы (R13): централизация выше 10 — сильная власть, ниже 5 — вольница;
+// стабильность ниже 5 — бунты.
+function worldVerdict(national){
+  const nat = national || {stability: 0, centralization: 0};
+  return {
+    strongPower: nat.centralization > 10,
+    boyarFreedom: nat.centralization < 5,
+    unrest: nat.stability < 5
+  };
 }
 
 // Один раунд аукциона: чистая функция над объектом аукциона. Возвращает {auction, winnerName}.

@@ -8,7 +8,7 @@ function gmScreen(){
   const allRodNames = Object.keys(state.rods);
   const rodNames = allRodNames.slice().sort((a,b)=> state.rods[b].resources[sortBy] - state.rods[a].resources[sortBy]);
 
-  const sortLabels = {slava:'Милость', krestyane:'Крестьяне', zoloto:'Золото'};
+  const sortLabels = {slava:'Знатность', krestyane:'Крестьяне', zoloto:'Золото'};
   const sortTabs = `
     <div class="sort-tabs">
       ${Object.keys(sortLabels).map(k=>`<button data-sort="${k}" class="${sortBy===k?'active':''}">${sortLabels[k]}</button>`).join('')}
@@ -136,6 +136,27 @@ function gmScreen(){
     const evIdx = state.currentIndex;
     const reachedHere = allRodNames.filter(n=>(state.rods[n].progress||0) >= evIdx).length;
     const releasedHere = !!(state.releasedAssemblies && state.releasedAssemblies[ev.id]);
+    // Финал (R13): итоговый рейтинг родов и вердикт державы по национальным показателям
+    let finalHtml = '';
+    if(ev.final){
+      const order = finalRanking(state.rods);
+      const verdict = worldVerdict(state.national);
+      const verdictLines = [];
+      if(verdict.strongPower) verdictLines.push('сильная центральная власть');
+      if(verdict.boyarFreedom) verdictLines.push('боярская вольница');
+      if(verdict.unrest) verdictLines.push('смута и бунты');
+      const estLblFin = {boyare:'боярский', dvoryane:'дворянский'};
+      finalHtml = `
+        <div class="vote-tally" style="margin-top:10px;">
+          <strong>Итоговый рейтинг родов</strong>
+          <ol>${order.map(n=>`<li>${escapeHtml(n)} — ${estLblFin[state.rods[n].estate] || 'дворянский'} · знатность ${state.rods[n].resources.slava}, ${state.rods[n].resources.krestyane} душ, ${state.rods[n].resources.zoloto} руб.</li>`).join('') || '<li>Родов нет</li>'}</ol>
+        </div>
+        <div class="revealed-note" style="margin-top:10px;">
+          <strong>Держава к финалу</strong><br>
+          Стабильность: ${state.national.stability} · Централизация: ${state.national.centralization}<br>
+          ${verdictLines.length ? verdictLines.join(' · ') : 'Власть и вольность держат равновесие'}
+        </div>`;
+    }
     rightPanel = `
       <span class="type-badge global">Очный собор</span>
       <h2 class="event-title">${ev.title}</h2>
@@ -143,6 +164,7 @@ function gmScreen(){
       ${ev.seating ? `<p class="small-note">Нужна рассадка по рейтингу.</p>` : ''}
       <p class="ui" style="font-size:13px;color:var(--ink-soft);">Дошли: ${reachedHere} из ${allRodNames.length} родов${ev.final ? ' · финал' : (releasedHere ? ' · ворота открыты' : ' · ворота закрыты')}</p>
       ${seatingHtml}
+      ${finalHtml}
     `;
   } else if(ev.type === 'normal'){
     const answeredCount = allRodNames.filter(n=>state.rods[n].answers[ev.id]).length;
@@ -209,7 +231,7 @@ function gmScreen(){
         </div>
         ${sortTabs}
         <table class="summary">
-          <tr><th>#</th><th>Род</th><th>Милость</th><th>Крест.</th><th>Золото</th></tr>
+          <tr><th>#</th><th>Род</th><th>Знатность</th><th>Крест.</th><th>Золото</th></tr>
           ${summaryRows || '<tr><td colspan="5" style="color:var(--ink-soft);padding:10px 0;">Ещё никто не присоединился</td></tr>'}
         </table>
         <div id="history-slot"></div>
@@ -218,9 +240,9 @@ function gmScreen(){
           <strong style="display:block;margin-bottom:6px;font-size:12px;">Ручная правка ресурсов</strong>
           <select id="adjust-rod">${rodNames.map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
           <select id="adjust-resource">
-            <option value="slava">Милость</option>
+            <option value="slava">Знатность</option>
             <option value="zoloto">Золото</option>
-            <option value="krestyane">Крестьяне (%)</option>
+            <option value="krestyane">Души</option>
           </select>
           <input type="number" id="adjust-amount" placeholder="+/- число">
           <button id="btn-manual-adjust">Применить</button>
@@ -301,7 +323,7 @@ function bindGmScreen(){
       busy = true;
       // Повторный подсчёт запрещён: если запись об итоге уже есть, эффекты не применяются заново
       if(evx.type === 'global') await resolveGlobalEvent(evx);
-      else if(evx.type === 'normal') await resolveMajorityBonus(evx);
+      else if(evx.type === 'normal') await resolveMajorityBonus(evx, {force: true}); // досрочный подсчёт: делитель — ответившие (R11)
       busy = false;
     };
   });
