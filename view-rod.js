@@ -404,7 +404,7 @@ function bindRodScreen(){
           estateText: estateText,
           deltas: combined,
           ...(mil ? {military: {due: mil.due, fielded: mil.fielded, lost: mil.lost}} : {}),
-          ...(incSpec ? {income: {amount: incSpec.amount, until: incSpec.until}} : {})
+          ...(incSpec ? {income: {amount: incSpec.amount, ...(incSpec.until !== undefined ? {until: incSpec.until} : {})}} : {})
         }
       };
       // Ответ ставится транзакцией «только если ещё нет»: с двух устройств одного рода эффект применится один раз
