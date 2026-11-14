@@ -665,7 +665,6 @@
         },
         "military": {
           "deploy": 1,
-          "casualties": 0.01,
           "scale": [
             {
               "by": "fielded",
@@ -674,7 +673,8 @@
                 "slava": 1
               }
             }
-          ]
+          ],
+          "lossFixed": 1
         }
       },
       {
@@ -1390,7 +1390,6 @@
         },
         "military": {
           "deploy": 1,
-          "casualties": 0.01,
           "scale": [
             {
               "by": "fielded",
@@ -1399,7 +1398,8 @@
                 "slava": 1
               }
             }
-          ]
+          ],
+          "lossFixed": 1
         }
       },
       {
@@ -1555,7 +1555,6 @@
         },
         "military": {
           "deploy": 1,
-          "casualties": 0.01,
           "scale": [
             {
               "by": "fielded",
@@ -1564,7 +1563,8 @@
                 "slava": 1
               }
             }
-          ]
+          ],
+          "lossFixed": 1
         }
       },
       {
@@ -3229,7 +3229,7 @@
         },
         "military": {
           "deploy": 1,
-          "casualties": 0.01
+          "lossFixed": 1
         }
       },
       {
@@ -3421,7 +3421,7 @@
         },
         "military": {
           "deploy": 1,
-          "casualties": 0.01
+          "lossFixed": 1
         }
       }
     ],

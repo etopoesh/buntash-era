@@ -78,9 +78,17 @@ function resolveEffect(source, rod, druzhina){
     const tier = findDruzhinaTier(source, druzhina === undefined ? druzhinaOf(rod.resources) : druzhina);
     if(tier) add(tier.effect);
   }
-  // Условная добавка (первый подходящий элемент conditionalEffects)
-  const ce = findConditionalEffect(source, rod);
-  if(ce) add(ce.effect);
+  // Условные добавки (ТЗ 21 S1): применяются все подходящие записи; текст берётся из первой подходящей.
+  const ces = source && source.conditionalEffects ? source.conditionalEffects.filter(ce => {
+    const flags = (rod && rod.flags) || {};
+    const estate = rod && rod.estate;
+    const slava = rod && rod.resources ? (rod.resources.slava || 0) : 0;
+    if(ce.requiresFlag && !flags[ce.requiresFlag]) return false;
+    if(ce.requiresEstate && ce.requiresEstate !== estate) return false;
+    if(ce.minSlava !== undefined && slava < ce.minSlava) return false;
+    return true;
+  }) : [];
+  ces.forEach(ce => add(ce.effect));
   return out;
 }
 
@@ -119,15 +127,6 @@ function applyEffect(res, effect){
   });
   if(out.krestyane < 20) out.krestyane = 20;
   return out;
-}
-
-// Скрытый параметр "Благоволение" — виден только ведущему, на ресурсы не влияет
-// автоматически. track — произвольная строка (например "tsar" или "godunov"),
-// значения по разным track накапливаются отдельно.
-function applyFavor(rod, favor){
-  if(!favor) return;
-  if(!rod.favor) rod.favor = {};
-  rod.favor[favor.track] = (rod.favor[favor.track] || 0) + favor.value;
 }
 
 function makeRod(name, estate){
@@ -268,8 +267,14 @@ function computeMilitary(souls, military, reductions){
   const sumRed = (reductions || []).reduce((a, b) => a + b, 0);
   const factor = Math.max(0, 1 - sumRed);
   let lost = 0;
-  if(fielded > 0 && military.casualties > 0){
-    lost = Math.min(fielded, Math.max(1, roundHalfUp(fielded * military.casualties * factor)));
+  if(fielded > 0){
+    // ТЗ 21 S5: «потерять ровно 1 холопа» задаётся military.lossFixed: 1, а не casualties: 0.01.
+    // Дробные проценты потерь (casualties) применяются к выставленным, фиксированная потеря — константой.
+    if(typeof military.lossFixed === 'number'){
+      lost = Math.min(fielded, Math.max(1, military.lossFixed));
+    } else if(military.casualties > 0){
+      lost = Math.min(fielded, Math.max(1, roundHalfUp(fielded * military.casualties * factor)));
+    }
   }
   const soulsAfterLosses = Math.max(20, souls - lost);
   const units = {fielded: fielded, missing: missing, due: due, extra: Math.floor(souls / 40)};

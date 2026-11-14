@@ -77,10 +77,10 @@ function rodScreen(){
   const nextBtnHtml = isLast
     ? `<div class="event-card">
         <span class="type-badge global">Игра завершена</span>
-        <h2 class="event-title">Созывается Земский собор</h2>
+        <h2 class="event-title">${ev.title}</h2>
         <div class="outcome-box">
-          <div class="otitle">Приглашение получено</div>
-          <div class="otext">Династия Рюриковичей пресеклась. Борис Годунов созывает знатные рода на Земский собор — решать судьбу престола. Отложите планшеты: дальнейшее решится вживую, лицом к лицу.</div>
+          <div class="otitle">Итоги подсчёта</div>
+          <div class="otext">${ev.description}</div>
         </div>
       </div>`
     : `<button class="choice-btn" id="btn-next-event">Далее →</button>`;
@@ -426,9 +426,6 @@ function bindRodScreen(){
         }
         // Снижение потерь на будущее накапливается (для последующих военных ходов)
         if(eff.casualtyReduction) await dbTx(`rods/${rodName}/casualtyReduction`, cur => (cur || 0) + eff.casualtyReduction);
-        if(choice.hiddenFavor){
-          await dbTx(`rods/${rodName}/favor/${choice.hiddenFavor.track}`, cur => (cur || 0) + choice.hiddenFavor.value);
-        }
       }
       busy = false;
     };
