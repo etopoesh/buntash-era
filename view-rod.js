@@ -28,7 +28,7 @@ function turnSummaryHtml(resources, estate, rod, turn){
   if(t.fleeCentralPct) lines.push(`Бегство из-за низкой централизации: −${t.fleeCentralPct}%`);
   if(t.fleeStabilityPct) lines.push(`Бегство из-за низкой стабильности: −${t.fleeStabilityPct}%`);
   if(t.fleeCentralPct || t.fleeStabilityPct) lines.push(t.krestyaneDelta < 0 ? `Крестьяне: ≈ −${-t.krestyaneDelta}` : 'Крестьяне: ≈ 0');
-  lines.push(`Золото: +${t.zolotoDelta}`);
+  lines.push(`Рубли: +${t.zolotoDelta}`);
   const rewards = pendingMilestones(currentRodObject(), resources.slava)
     .map(m => `<div class="effect-line pos">Знатность: вам жалуют землю с крестьянами, +${m.krestyane}</div>`).join('');
   return `
@@ -93,9 +93,9 @@ function rodScreen(){
     </div>
     <div class="resource-bar">
       <div class="res-pill"><div class="val">${res.slava}</div><div class="lab">Знатность</div></div>
-      <div class="res-pill"><div class="val">${res.zoloto}</div><div class="lab">Золото</div></div>
+      <div class="res-pill"><div class="val">${res.zoloto}</div><div class="lab">Рубли</div></div>
       <div class="res-pill"><div class="val">${res.krestyane}</div><div class="lab">Крестьяне</div></div>
-      <div class="res-pill"><div class="val">${Math.floor(res.krestyane/20)}</div><div class="lab">Дружина</div></div>
+      <div class="res-pill"><div class="val">${Math.floor(res.krestyane/20)}</div><div class="lab">Боевые холопы</div></div>
     </div>
     <div class="resource-bar national-bar">
       <div class="res-pill"><div class="val">${nat.centralization}</div><div class="lab">Централизация</div></div>
@@ -264,7 +264,7 @@ function rodScreen(){
           <div class="event-card">
             <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
             <h2 class="event-title">${ev.title}</h2>
-            <div class="waiting-box">Ставка принята: ${auction.bids[currentRod]} золота. Ждите оглашения итогов.</div>
+            <div class="waiting-box">Ставка принята: ${auction.bids[currentRod]} рублей. Ждите оглашения итогов.</div>
           </div>`;
       } else {
         body = `
@@ -272,9 +272,9 @@ function rodScreen(){
             <span class="era-badge">${ev.era}</span><span class="type-badge auction">Торги за титул</span>
             <h2 class="event-title">${ev.title}</h2>
             <p class="event-desc">${ev.description}</p>
-            ${auction.round > 1 ? `<p class="small-note">Второй раунд: ваша ставка сравнялась с другим родом. Новая ставка — из оставшегося золота.</p>` : ''}
+            ${auction.round > 1 ? `<p class="small-note">Второй раунд: ваша ставка сравнялась с другим родом. Новая ставка — из оставшихся рублей.</p>` : ''}
             <div class="bid-row">
-              <input type="number" id="bid-input" min="0" max="${res.zoloto}" placeholder="Золота (макс. ${res.zoloto})">
+              <input type="number" id="bid-input" min="0" max="${res.zoloto}" placeholder="Рублей (макс. ${res.zoloto})">
               <button class="choice-btn" id="btn-submit-bid">Сделать ставку</button>
             </div>
           </div>`;
@@ -292,7 +292,7 @@ function rodScreen(){
           <h2 class="event-title">${ev.title}</h2>
           <p class="event-desc">${ev.description}</p>
           ${rodCardLine}
-          ${ev.choices.some(c=>c.druzhinaTiers) ? `<p class="event-desc">Ваша дружина: <strong>${druzhinaOf(rod.resources)}</strong></p>` : ''}
+          ${ev.choices.some(c=>c.druzhinaTiers) ? `<p class="event-desc">Ваши боевые холопы: <strong>${druzhinaOf(rod.resources)}</strong></p>` : ''}
           ${availableChoices.map(c=>`<button class="choice-btn" data-key="${c.key}">${c.label}</button>`).join('')}
         </div>`;
     } else {

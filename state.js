@@ -12,9 +12,9 @@ function initialState(){
 }
 
 function defaultResources(estate){
-  // Стартовые ресурсы едины для всех сословий; rod.estate сохраняется и используется
-  // отдельно (например, requiresEstate у части выборов), но на старте больше не влияет.
-  return {slava: 10, krestyane: 200, zoloto: 300};
+  // Стартовые ресурсы: бояре начинают со знатностью 14, остальные сословия — как раньше.
+  // rod.estate сохраняется и используется отдельно (например, requiresEstate у части выборов), но на старте больше не влияет.
+  return {slava: estate === 'boyare' ? 14 : 10, krestyane: 200, zoloto: 100};
 }
 
 let state = null;
@@ -39,10 +39,10 @@ function resourceEffect(effect){
   return out;
 }
 
-// Дельты ресурсов для игрока: «Знатность +3», «Души −20», «Золото −200».
+// Дельты ресурсов для игрока: «Знатность +3», «Души −20», «Рубли −200».
 // Души — абсолютные числа (не проценты). Неизвестные ключи не показываются.
 function fmtDelta(effect){
-  const labels = {slava:'Знатность', zoloto:'Золото', krestyane:'Души'};
+  const labels = {slava:'Знатность', zoloto:'Рубли', krestyane:'Души'};
   const parts = [];
   for(const k in effect){
     if(!labels[k] || !effect[k]) continue;
@@ -224,12 +224,13 @@ function patchAuction(auction){
 // Расчёт тика экономики — чистая функция (ничего не мутирует). Её вызывают и реальное применение
 // (applyEconomyTick), и прикидка «Хозяйство за ход» на экране рода, формулы не дублируются.
 // Возвращает составляющие: бегство от централизации и от стабильности (%), крестьян до/после (с полом 20),
-// их изменение и доход золота.
+// их изменение и доход в рублях за ход.
 function computeEconomyTick(resources, estate, national, incomeMods){
   const nat = national || {stability: 10, centralization: 10};
   const krestyaneBefore = resources.krestyane;
   const mods = Array.isArray(incomeMods) ? incomeMods : [];
-  const income = krestyaneBefore * 1 + mods.reduce((a, b) => a + b, 0);
+  // Доход: 0.1 (рубля) за одного крестьянина, итоговая сумма за ход округляется в большую сторону.
+  const income = Math.ceil(krestyaneBefore * 0.1 + mods.reduce((a, b) => a + b, 0));
 
   // Бегство от централизации: ниже 5 — дворяне 4%, бояре 2%; иначе 0
   const fleeCentralPct = nat.centralization < 5 ? (estate === 'boyare' ? 2 : 4) : 0;
@@ -301,7 +302,7 @@ function activeIncomeMods(rod, turn){
 }
 
 // Единый тик экономики — на каждом переходе рода к следующему событию (кроме assembly), без чекпоинтов.
-// Тик принадлежит ходу turn: доход = души × 1 + сумма активных на этом ходу прибавок (R4).
+// Тик принадлежит ходу turn: доход = души × 0.1 + сумма активных на этом ходу прибавок (R4).
 // Мутирует rod.resources и возвращает дельты.
 function applyEconomyTick(rod, turn){
   const t = computeEconomyTick(rod.resources, rod.estate, state.national, activeIncomeMods(rod, turn));
@@ -476,7 +477,7 @@ function computeAuctionRound(auction, rodNames, ev){
   if(topRods.length === 1){
     winnerName = topRods[0];
     a.winner = winnerName;
-    a.narrative = `Наивысшую ставку сделал род «${winnerName}» — ${maxBid} золота.`;
+    a.narrative = `Наивысшую ставку сделал род «${winnerName}» — ${maxBid} рублей.`;
   } else if(topRods.length > 1){
     a.round++;
     a.tiedRods = topRods;

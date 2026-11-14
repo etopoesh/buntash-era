@@ -8,7 +8,7 @@ function gmScreen(){
   const allRodNames = Object.keys(state.rods);
   const rodNames = allRodNames.slice().sort((a,b)=> state.rods[b].resources[sortBy] - state.rods[a].resources[sortBy]);
 
-  const sortLabels = {slava:'Знатность', krestyane:'Крестьяне', zoloto:'Золото'};
+  const sortLabels = {slava:'Знатность', krestyane:'Крестьяне', zoloto:'Рубли'};
   const sortTabs = `
     <div class="sort-tabs">
       ${Object.keys(sortLabels).map(k=>`<button data-sort="${k}" class="${sortBy===k?'active':''}">${sortLabels[k]}</button>`).join('')}
@@ -231,7 +231,7 @@ function gmScreen(){
         </div>
         ${sortTabs}
         <table class="summary">
-          <tr><th>#</th><th>Род</th><th>Знатность</th><th>Крест.</th><th>Золото</th></tr>
+          <tr><th>#</th><th>Род</th><th>Знатность</th><th>Крест.</th><th>Рубли</th></tr>
           ${summaryRows || '<tr><td colspan="5" style="color:var(--ink-soft);padding:10px 0;">Ещё никто не присоединился</td></tr>'}
         </table>
         <div id="history-slot"></div>
@@ -241,7 +241,7 @@ function gmScreen(){
           <select id="adjust-rod">${rodNames.map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
           <select id="adjust-resource">
             <option value="slava">Знатность</option>
-            <option value="zoloto">Золото</option>
+            <option value="zoloto">Рубли</option>
             <option value="krestyane">Души</option>
           </select>
           <input type="number" id="adjust-amount" placeholder="+/- число">
