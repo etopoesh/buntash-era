@@ -331,7 +331,7 @@ function rodScreen(){
               ${estateText ? `<div class="otext">${estateText}</div>` : ''}
               ${fmtDelta(deltas)}
               ${mil ? `<div class="effect-line">Боевые холопы: выставлено ${mil.fielded}, погибло ${mil.lost}</div>` : ''}
-              ${inc ? `<div class="effect-line pos">Доход: +${inc.amount} в ход</div>` : ''}
+              ${inc ? `<div class="effect-line ${inc.amount > 0 ? 'pos' : 'neg'}">${inc.amount > 0 ? 'Увеличение дохода' : 'Уменьшение дохода'}: ${inc.amount > 0 ? '+' : '-'}${Math.abs(inc.amount)} в ход</div>` : ''}
             </div>
             ${turnSummaryHtml(rod.resources, rod.estate, rod, ev.turn)}
             ${waitNote}
