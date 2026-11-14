@@ -11,7 +11,7 @@
 | 3 | S3 majority {turn, choice}/{turn, choices} | строго > половины; результат запоминается | `majorityOf` — строго > половины; `majorityBonus` на вариантах | state.js, `majorityOf` | OK для текущей схемы |
 | 4 | S4 arrivalBonus авто/порядок | авто при входе на ход, порядок narrative→tick→milestones→transition→delayed | `getArrivalBonuses`, обработка в view-rod | state.js / view-rod.js | OK |
 | 5 | S5 lossFixed | `military.lossFixed: 1` вместо `casualties: 0.01` | Введён `lossFixed` в `computeMilitary`; events kazan-8-3/molodi-18-2/pskov-20-2/soly-48-1/khleb-51-3 переведены | state.js, events.json | OK после правки |
-| 6 | §2 автоматическая проверка D-пунктов | lint проверяет source-setFlags + target-conditional, логирует непокрытые | Расширение lint выполнено в рамках ТЗ 20 (завершён) | tools/lint-events.js | OK |
+| 6 | §2 автоматическая проверка D-пунктов | lint проверяет source-setFlags + target-conditional, логирует непокрытые | Кросс-чек D-пунктов (source/target/conditional) выполнен отдельным скриптом; расширения lint-events.js под D-пункты не вносилось (отложено) | tools/lint-events.js, plus/delayed-worklist.json | PARTIAL |
 | 7 | §3 check-doc-effects | скрипт + DOC-CHECK.md, сверка 173 выборов | DOC-CHECK.md создан; скрипт — временный | DOC-CHECK.md, tools/check-doc-effects.js | PARTIAL |
 | 8 | §4 MILITARY.md | таблица + список плоских констант | MILITARY.md создан | MILITARY.md | PARTIAL |
 | 9 | §5 firebase-init | один firebase-init.js, ссылка в index.html | Переименован в firebase-init.js, index.html обновлён | firebase-init.js, index.html | OK |
