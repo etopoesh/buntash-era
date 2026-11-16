@@ -596,7 +596,10 @@ function bindRodScreen(){
   const idx = Math.min(rod.progress || 0, state.events.length - 1);
   const ev = state.events[idx];
 
-  document.getElementById('btn-toggle-history').onclick = ()=>{ showHistory = !showHistory; render(); };
+  const historyBtn = document.getElementById('btn-toggle-history');
+  if(historyBtn){
+    historyBtn.onclick = ()=>{ showHistory = !showHistory; render(); };
+  }
 
   // ТЗ 22: кнопка «Усадьба» в шапке экрана рода
   const estateBtn = document.getElementById('btn-estate');
