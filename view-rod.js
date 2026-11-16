@@ -114,7 +114,6 @@ function rodScreen(){
   const header = `
     <div class="rod-header">
       <span class="name">${rod.estate === 'boyare' ? 'Боярский' : 'Дворянский'} род «${currentRod}» ${titleBadges}</span>
-      <button id="btn-estate">Усадьба <span class="build-count">${builtCountOf(rod)}</span></button>
       <button id="btn-leave">перейти к выбору рода</button>
     </div>
     <div class="resource-bar">
@@ -220,7 +219,10 @@ function rodScreen(){
   }
   if(ev.buildWindow && state.buildings && buildPhase === 'choose' && rod.buildWindows && rod.buildWindows[ev.id] === undefined){
     buildEventId = ev.id;
-    return `${header}${historyToggle}${historyPanel}${renderBuildWindowHtml(rod, ev)}`;
+    let out = `${header}${historyToggle}${historyPanel}${renderBuildWindowHtml(rod, ev)}`;
+    if(estateOpen) out += renderEstateOverlay(rod);
+    if(detailBuildingId) out += renderBuildDetail(rod);
+    return out;
   }
 
   // Слухи — необязательный переходный экран перед конкретным событием, показывается один раз
@@ -574,7 +576,7 @@ function renderEstateOverlay(rod){
   const grid = nonVillage.map(b => {
     const isBuilt = (built[b.id] || 0) > 0;
     return `<div class="build-estate-item ${isBuilt ? 'built' : ''}" data-bid="${b.id}">
-      <div class="build-estate-icon">${b.emoji}</div>
+      <div class="build-estate-img"><img src="${b.image}" alt="${b.name}" onerror="this.parentNode.classList.add('missing')"><div class="build-estate-fallback">${b.emoji}</div></div>
       <div class="build-estate-name">${isBuilt ? b.name : ''}</div>
     </div>`;
   }).join('');
@@ -602,12 +604,8 @@ function bindRodScreen(){
     historyBtn.onclick = ()=>{ showHistory = !showHistory; render(); };
   }
 
-  // ТЗ 22: кнопка «Усадьба» в шапке экрана рода и плашка «Усадьба» рядом с плашками ресурсов
+  // ТЗ 22: плашка «Усадьба» рядом с плашками ресурсов — открывает экран «Ваша усадьба»
   const openEstate = ()=>{ estateOpen = true; render(); };
-  const estateBtn = document.getElementById('btn-estate');
-  if(estateBtn){
-    estateBtn.onclick = openEstate;
-  }
   const estatePill = document.getElementById('btn-estate-pill');
   if(estatePill){
     estatePill.onclick = openEstate;
@@ -626,6 +624,25 @@ function bindRodScreen(){
     btn.onclick = ()=>{
       if(busy) return;
       buildCat = btn.dataset.buildCat;
+      render();
+    };
+  });
+  document.querySelectorAll('.build-btn[data-bid]').forEach(btn=>{
+    btn.onclick = e => {
+      e.stopPropagation();
+      if(busy) return;
+      if(buildPhase !== 'choose') return;
+      const bid = btn.dataset.bid;
+      const b = buildingById(bid);
+      if(!b) return;
+      const rodObj = state.rods[currentRod];
+      const count = (rodObj.buildings || {})[bid] || 0;
+      const alreadyBuilt = b.maxCount === 1 ? count >= 1 : (b.maxCount !== null && b.maxCount !== undefined && count >= b.maxCount);
+      const gold = rodObj.resources.zoloto || 0;
+      if(alreadyBuilt || gold < (b.price || 0)) return;
+      buildConfirmingId = bid;
+      buildSelId = bid;
+      buildPhase = 'confirm';
       render();
     };
   });
@@ -677,11 +694,12 @@ function bindRodScreen(){
   if(btnBuildConfirmYes){
     btnBuildConfirmYes.onclick = async ()=>{
       if(busy) return;
+      const nb = buildConfirmingId ? buildingById(buildConfirmingId) : null;
+      if(!nb){ buildPhase = 'choose'; buildConfirmingId = null; buildSelId = null; render(); return; }
       busy = true;
-      const r = await buyBuilding(currentRod, buildEventId, buildConfirmingId);
+      const r = await buyBuilding(currentRod, buildEventId, nb.id);
       busy = false;
       if(r.ok){
-        const nb = buildingById(buildConfirmingId);
         const eff2 = resourceEffect(nb.onBuild);
         const labels2 = {slava: 'Знатность', krestyane: 'Души', zoloto: 'Рубли'};
         const lines = [];
@@ -690,7 +708,7 @@ function bindRodScreen(){
         if(nb.perTurn && typeof nb.perTurn.fleeReduction === 'number') lines.push(`<div class="effect-line pos">Бегство крестьян: −${nb.perTurn.fleeReduction} п. п.</div>`);
         lines.push(`<div class="effect-line neg">Рубли −${nb.price || 0}</div>`);
         buildPhase = 'result';
-        buildResultInfo = {buildingId: buildConfirmingId, name: nb.name, short: nb.short, lines: lines};
+        buildResultInfo = {buildingId: nb.id, name: nb.name, short: nb.short, lines: lines};
         state.rods[currentRod] = r.value;
         render();
       } else {
