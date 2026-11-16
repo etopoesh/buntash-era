@@ -87,6 +87,9 @@
   /* ТЗ 22: плашки Централизация/Стабильность державы — того же размера, что и плашки остальных ресурсов
      (в строке из двух плашек не растягиваются на всю ширину, как в строке из четырёх) */
   .resource-bar.national-bar .res-pill{ flex: 0 0 calc(25% - 7.5px); }
+  .res-pill-action{ cursor:pointer; }
+  .res-pill-action:hover{ background:var(--parchment-dark); }
+  .res-pill-action:active{ transform:scale(0.99); }
   .res-pill .val{font-size:22px;font-weight:bold;color:var(--ink);}
   .res-pill .lab{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:var(--ink-soft);margin-top:2px;}
 

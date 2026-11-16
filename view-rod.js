@@ -126,6 +126,7 @@ function rodScreen(){
     <div class="resource-bar national-bar">
       <div class="res-pill"><div class="val">${nat.centralization}</div><div class="lab">Централизация</div></div>
       <div class="res-pill"><div class="val">${nat.stability}</div><div class="lab">Стабильность державы</div></div>
+      <button class="res-pill res-pill-action" id="btn-estate-pill"><div class="val">${builtCountOf(rod)}</div><div class="lab">Усадьба</div></button>
     </div>`;
 
   // Непоказанные итоги отложенных (глобальных) событий — не зависят от того, на каком событии род сейчас
@@ -601,10 +602,15 @@ function bindRodScreen(){
     historyBtn.onclick = ()=>{ showHistory = !showHistory; render(); };
   }
 
-  // ТЗ 22: кнопка «Усадьба» в шапке экрана рода
+  // ТЗ 22: кнопка «Усадьба» в шапке экрана рода и плашка «Усадьба» рядом с плашками ресурсов
+  const openEstate = ()=>{ estateOpen = true; render(); };
   const estateBtn = document.getElementById('btn-estate');
   if(estateBtn){
-    estateBtn.onclick = ()=>{ estateOpen = true; render(); };
+    estateBtn.onclick = openEstate;
+  }
+  const estatePill = document.getElementById('btn-estate-pill');
+  if(estatePill){
+    estatePill.onclick = openEstate;
   }
 
   // ТЗ 22: окно «Постройки» — пропуск
