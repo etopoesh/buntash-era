@@ -699,7 +699,7 @@ function bindRodScreen(){
       busy = true;
       const r = await buyBuilding(currentRod, buildEventId, nb.id);
       busy = false;
-      if(r.ok){
+      if(r.ok && r.rod){
         const eff2 = resourceEffect(nb.onBuild);
         const labels2 = {slava: 'Знатность', krestyane: 'Души', zoloto: 'Рубли'};
         const lines = [];
@@ -709,7 +709,7 @@ function bindRodScreen(){
         lines.push(`<div class="effect-line neg">Рубли −${nb.price || 0}</div>`);
         buildPhase = 'result';
         buildResultInfo = {buildingId: nb.id, name: nb.name, short: nb.short, lines: lines};
-        state.rods[currentRod] = r.value;
+        state.rods[currentRod] = r.rod;
         render();
       } else {
         buildPhase = 'choose';
