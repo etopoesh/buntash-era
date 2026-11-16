@@ -15,6 +15,7 @@ async function render(){
       patchRod(state.rods[name]);
     });
   }
+  if (!state.buildings) state.buildings = null; // ТЗ 22: каталог построек; null — не загружен
   Object.keys(state.auctions || {}).forEach(id => patchAuction(state.auctions[id]));
 
   if(currentRod && !state.rods[currentRod]) currentRod = null; // род удалён организатором
@@ -43,12 +44,14 @@ async function render(){
 
 async function boot(){
   const freshEvents = (await loadEvents()).filter(e => !e.hidden); // Загружаем события из JSON, скрытые события отсекаем сразу — ни GM, ни рода их не увидят
+  const freshBuildings = await loadBuildings(); // ТЗ 22: каталог построек; null — не загрузился, окно не покажется
 
   stateRef.on('value', (snapshot) => {
     const data = snapshot.val();
     if (data) {
       state = data;
       state.events = freshEvents;
+      state.buildings = freshBuildings; // ТЗ 22: каталог построек (null — не загрузился)
       if (!state.globalResults) state.globalResults = {};
       if (!state.auctions) state.auctions = {};
       if (!state.national) state.national = {stability: 10, centralization: 10};
@@ -64,6 +67,7 @@ async function boot(){
           patchRod(state.rods[name]);
         });
       }
+      if (!state.buildings) state.buildings = null; // ТЗ 22: каталог построек; null — не загружен
       Object.keys(state.auctions || {}).forEach(id => patchAuction(state.auctions[id]));
 
       // Автооглашение global-событий: как только все рода проголосовали, ведущему
@@ -91,6 +95,7 @@ async function boot(){
       stateRef.set(initialState());
       state = initialState();
       state.events = freshEvents;
+      state.buildings = freshBuildings;
     }
     render();
   });

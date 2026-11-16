@@ -176,6 +176,7 @@
         }
       }
     ],
+    "buildWindow": true,
     "turn": 2
   },
   {
@@ -995,6 +996,7 @@
         }
       }
     ],
+    "buildWindow": true,
     "turn": 12
   },
   {
@@ -1700,6 +1702,7 @@
         }
       }
     ],
+    "buildWindow": true,
     "turn": 22
   },
   {
@@ -2279,6 +2282,7 @@
         }
       }
     ],
+    "buildWindow": true,
     "turn": 32
   },
   {
@@ -2876,6 +2880,7 @@
         "outcomeText": "Собор не выбрал Пожарского царём, но его сторонников запомнили."
       }
     ],
+    "buildWindow": true,
     "turn": 42
   },
   {
@@ -3479,6 +3484,7 @@
         "outcomeText": "Вы не получили ни милости Никона, ни поддержки бояр."
       }
     ],
+    "buildWindow": true,
     "turn": 52
   },
   {

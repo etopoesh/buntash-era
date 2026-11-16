@@ -1,3 +1,14 @@
+// ТЗ 22: состояние экранов построек (окно «Постройки», подтверждение, результат, детальная карточка, «Усадьба»)
+let buildPhase = 'choose'; // 'choose' | 'confirm' | 'result' | 'skip'
+let buildConfirmingId = null;
+let buildResultInfo = null;
+let buildSelId = null;
+let buildCat = null;
+let buildEventId = null;
+let detailSource = null; // 'window' | 'estate'
+let detailBuildingId = null;
+let estateOpen = false;
+
 function landingScreen(){
   return `
   <button class="gm-tiny-link" id="btn-gm">вход для организатора</button>
@@ -16,14 +27,28 @@ function bindLanding(){
   document.getElementById('btn-rod').onclick = ()=>{ role='rod'; render(); };
 }
 
+// ТЗ 22: закрытие детальной карточки по клавише Esc
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && detailBuildingId){
+    closeBuildDetail();
+  }
+});
+
 function escapeHtml(t){
   return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ТЗ 22: закрытие детальной карточки
+function closeBuildDetail(){
+  detailBuildingId = null;
+  detailSource = null;
+  render();
 }
 
 // Блок «Хозяйство за ход» + строки наград за знатность. resources — ресурсы, по которым считается прикидка;
 // rod и turn — чьи прибавки к доходу и тик какого хода имеется в виду (R4/R6).
 function turnSummaryHtml(resources, estate, rod, turn){
-  const t = computeEconomyTick(resources, estate, state.national, activeIncomeMods(rod, turn));
+  const t = computeEconomyTick(resources, estate, state.national, activeIncomeMods(rod, turn), fleeReductionOf(rod));
   const lines = [];
   if(t.fleeCentralPct) lines.push(`Бегство из-за низкой централизации: −${t.fleeCentralPct}%`);
   if(t.fleeStabilityPct) lines.push(`Бегство из-за низкой стабильности: −${t.fleeStabilityPct}%`);
@@ -89,6 +114,7 @@ function rodScreen(){
   const header = `
     <div class="rod-header">
       <span class="name">${rod.estate === 'boyare' ? 'Боярский' : 'Дворянский'} род «${currentRod}» ${titleBadges}</span>
+      <button id="btn-estate">Усадьба <span class="build-count">${builtCountOf(rod)}</span></button>
       <button id="btn-leave">перейти к выбору рода</button>
     </div>
     <div class="resource-bar">
@@ -179,6 +205,22 @@ function rodScreen(){
         <div class="otext">${ev.introByEstate[rod.estate].text || ''}</div>
       </div>`
     : '';
+
+  // ТЗ 22: окно «Постройки» — появляется перед слухами и содержимым хода, один раз на событие.
+  // Пока окно не решено (rod.buildWindows[ev.id] нет), оно показывается вместо содержимого хода.
+  if(buildPhase === 'confirm'){
+    return `${header}${renderBuildConfirm(rod)}`;
+  }
+  if(buildPhase === 'result'){
+    return `${header}${renderBuildResult()}`;
+  }
+  if(buildPhase === 'skip'){
+    return `${header}${renderBuildWindowHtml(rod, ev)}`;
+  }
+  if(ev.buildWindow && state.buildings && buildPhase === 'choose' && rod.buildWindows && rod.buildWindows[ev.id] === undefined){
+    buildEventId = ev.id;
+    return `${header}${historyToggle}${historyPanel}${renderBuildWindowHtml(rod, ev)}`;
+  }
 
   // Слухи — необязательный переходный экран перед конкретным событием, показывается один раз
   if(ev.rumors && ev.rumors.length && !rod.seenRumors[ev.id]){
@@ -341,8 +383,213 @@ function rodScreen(){
     }
   }
 
-  return `${header}${historyToggle}${historyPanel}${revealBanner}${arrivalBonusBanner}${body}`;
+  let out = `${header}${historyToggle}${historyPanel}${revealBanner}${arrivalBonusBanner}${body}`;
+  if(estateOpen) out += renderEstateOverlay(rod);
+  if(detailBuildingId) out += renderBuildDetail(rod);
+  return out;
 }
+
+// ---------------------------------------------------------------------------
+// ТЗ 22: окно «Постройки» (Что построить) и экран «Ваша усадьба».
+// ---------------------------------------------------------------------------
+function buildCardHtml(b, rod, ctx){
+  const built = rod.buildings || {};
+  const count = built[b.id] || 0;
+  const alreadyBuilt = b.maxCount === 1 ? count >= 1 : (b.maxCount !== null && b.maxCount !== undefined && count >= b.maxCount);
+  const price = b.price || 0;
+  const gold = rod.resources.zoloto || 0;
+  const insufficient = gold < price;
+  const selMismatch = !!(ctx.selId) && ctx.selId !== b.id;
+  const disabled = alreadyBuilt || insufficient || selMismatch;
+  const label = alreadyBuilt ? 'Построено' : selMismatch ? 'Выбор сделан' : (insufficient ? `Не хватает ${price - gold} руб.` : 'Построить');
+  const img = `<div class="build-card-img"><img src="${b.image}" alt="${b.name}" onerror="this.parentNode.classList.add('missing')"><div class="build-card-fallback">${b.emoji}</div></div>`;
+  const pills = (b.bonusText || []).map(t => `<span class="build-bonus">${t}</span>`);
+  if(b.oneTime) pills.push('<span class="build-bonus">Единоразово</span>');
+  const btn = alreadyBuilt
+    ? `<div class="build-ribbon">Построено</div>`
+    : `<button class="build-btn" data-bid="${b.id}" ${disabled ? 'disabled' : ''}>${label}</button>`;
+  const cls = 'build-card' + (disabled ? ' build-card-disabled' : '') + (alreadyBuilt ? ' build-card-built' : '');
+  return `<div class="${cls}" data-bid="${b.id}">
+    ${img}
+    <div class="build-card-name">${b.name}</div>
+    <div class="build-bonus-row">${pills.join('')}</div>
+    <div class="build-short">${b.short || ''}</div>
+    <div class="build-price ${insufficient ? 'low' : ''}">${price} руб.</div>
+    ${btn}
+  </div>`;
+}
+
+function renderBuildWindowHtml(rod, ev){
+  const buildings = buildingsList();
+  const cats = (state.buildings && Array.isArray(state.buildings.categories)) ? state.buildings.categories : [];
+  const gold = rod.resources.zoloto || 0;
+  const wide = (typeof window !== 'undefined') && typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1100px)').matches;
+  const phase = buildPhase;
+  const selId = buildSelId || buildConfirmingId;
+
+  if(phase === 'skip'){
+    return `<div class="build-window event-card">
+      <span class="era-badge">${ev.era || ''}</span>
+      <h2 class="build-title">Ваша усадьба: что построить</h2>
+      <div class="outcome-box"><div class="otitle">Окно закрыто</div><div class="otext">Построек на этот ход не было.</div></div>
+      <button class="choice-btn" id="btn-build-continue">Продолжить</button>
+    </div>`;
+  }
+  if(phase === 'result'){
+    const info = buildResultInfo || {};
+    const lines = info.lines || [];
+    return `<div class="build-window event-card">
+      <span class="era-badge">${ev.era || ''}</span>
+      <h2 class="build-title">Ваша усадьба: что построить</h2>
+      <div class="outcome-box">
+        <div class="otitle">Построено: ${info.name || ''}</div>
+        <div class="otext">${info.short || ''}</div>
+        ${lines.map(l => `<div>${l}</div>`).join('')}
+      </div>
+      <button class="choice-btn" id="btn-build-continue">Продолжить</button>
+    </div>`;
+  }
+
+  let catsHtml = '';
+  if(wide){
+    cats.forEach(c => {
+      const list = buildings.filter(b => b.category === c.id);
+      catsHtml += `<div class="build-cat"><h3 class="build-cat-title">${c.name}</h3><div class="build-grid">${list.map(b => buildCardHtml(b, rod, {selId: selId})).join('')}</div></div>`;
+    });
+  } else {
+    const cat = cats.find(c => c.id === buildCat) || cats[0];
+    const list = cat ? buildings.filter(b => b.category === cat.id) : [];
+    const tabs = `<div class="build-tabs">${cats.map(c => `<button class="build-tab ${cat && cat.id === c.id ? 'active' : ''}" data-build-cat="${c.id}">${c.name}</button>`).join('')}</div>`;
+    catsHtml = `${tabs}<div class="build-cat"><h3 class="build-cat-title">${cat ? cat.name : ''}</h3><div class="build-grid">${list.map(b => buildCardHtml(b, rod, {selId: selId})).join('')}</div></div>`;
+  }
+  return `<div class="build-window event-card" id="build-window-root">
+    <span class="era-badge">${ev.era || ''}</span>
+    <h2 class="build-title">Ваша усадьба: что построить</h2>
+    <p class="build-subtitle">Выберите одно здание или пропустите</p>
+    <div class="build-gold">В казне: <strong>${gold}</strong> руб.</div>
+    ${catsHtml}
+    <button class="choice-btn" id="btn-build-skip">Пропустить</button>
+  </div>`;
+}
+
+// ТЗ 22 §5: детальная карточка здания (поверх экрана). source — откуда открыта: 'window' (с кнопкой
+// «Построить») или 'estate' (только «Закрыть», для чтения).
+function renderBuildDetail(rod){
+  const b = buildingById(detailBuildingId);
+  if(!b) return '';
+  const fromWindow = detailSource === 'window';
+  const gold = rod.resources.zoloto || 0;
+  const built = rod.buildings || {};
+  const count = built[b.id] || 0;
+  const alreadyBuilt = b.maxCount === 1 ? count >= 1 : (b.maxCount !== null && b.maxCount !== undefined && count >= b.maxCount);
+  const insufficient = gold < (b.price || 0);
+  const disabled = alreadyBuilt || insufficient;
+  const label = alreadyBuilt ? 'Построено' : (insufficient ? `Не хватает ${(b.price || 0) - gold} руб.` : 'Построить');
+  const pills = (b.bonusText || []).map(t => `<span class="build-bonus">${t}</span>`);
+  if(b.oneTime) pills.push('<span class="build-bonus">Единоразово</span>');
+  const foot = fromWindow
+    ? `<button class="build-btn" id="btn-build-detail-yes" ${disabled ? 'disabled' : ''}>${label}</button>`
+    : `<button class="build-btn" id="btn-build-detail-close">Закрыть</button>`;
+  return `<div class="build-overlay" id="build-detail-root">
+    <div class="build-modal build-detail">
+      <div class="build-card-img build-detail-img"><img src="${b.image}" alt="${b.name}" onerror="this.parentNode.classList.add('missing')"><div class="build-card-fallback">${b.emoji}</div></div>
+      <h2 class="build-detail-name">${b.name}</h2>
+      <div class="build-bonus-row">${pills.join('')}</div>
+      <div class="build-desc">${b.description || ''}</div>
+      <div class="build-price">${b.price} руб.</div>
+      <div class="build-modal-actions">${foot}</div>
+    </div>
+  </div>`;
+}
+
+// ТЗ 22 §3: подтверждение покупки — нижняя панель на телефоне или окно по центру на большом экране
+function renderBuildConfirm(rod){
+  const b = buildingById(buildConfirmingId);
+  if(!b) return '';
+  const price = b.price || 0;
+  const gold = rod.resources.zoloto || 0;
+  const lines = [];
+  const eff = resourceEffect(b.onBuild);
+  const labels = {slava: 'Знатность', krestyane: 'Души', zoloto: 'Рубли'};
+  Object.keys(eff).forEach(k => {
+    const v = eff[k];
+    if(typeof v !== 'number' || !labels[k]) return;
+    lines.push(`<div class="effect-line ${v > 0 ? 'pos' : 'neg'}">${labels[k]} ${v > 0 ? '+' : ''}${v}</div>`);
+  });
+  if(b.perTurn && typeof b.perTurn.income === 'number') lines.push(`<div class="effect-line pos">Доход: +${b.perTurn.income} руб. в ход</div>`);
+  if(b.perTurn && typeof b.perTurn.fleeReduction === 'number') lines.push(`<div class="effect-line pos">Бегство крестьян: −${b.perTurn.fleeReduction} п. п.</div>`);
+  lines.push(`<div class="effect-line neg">Рубли −${price}</div>`);
+  return `<div class="build-overlay" id="build-confirm-root">
+    <div class="build-modal build-confirm">
+      <div class="build-modal-title">Подтверждение</div>
+      <div class="build-confirm-text">Построить «${b.name}» за ${price} руб.? Останется ${gold - price} руб.</div>
+      <div class="outcome-box">${lines.map(l => `<div>${l}</div>`).join('')}</div>
+      <div class="build-modal-actions">
+        <button class="build-btn" id="btn-build-confirm-yes">Построить</button>
+        <button class="build-btn build-btn-ghost" id="btn-build-confirm-no">Отмена</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ТЗ 22 §3: панель результата после покупки
+function renderBuildResult(){
+  const info = buildResultInfo || {};
+  const lines = info.lines || [];
+  return `<div class="build-overlay" id="build-result-root">
+    <div class="build-modal build-result">
+      <div class="build-modal-title">Результат</div>
+      <div class="outcome-box">
+        <div class="otitle">Построено: ${info.name || ''}</div>
+        <div class="otext">${info.short || ''}</div>
+        ${lines.map(l => `<div>${l}</div>`).join('')}
+      </div>
+      <div class="build-modal-actions">
+        <button class="choice-btn" id="btn-build-continue">Продолжить</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ТЗ 22 §4: экран «Ваша усадьба» — оверлей со списком построек и постоянными бонусами
+function renderEstateOverlay(rod){
+  const buildings = buildingsList();
+  const nonVillage = buildings.filter(b => b.id !== 'votchina');
+  const built = rod.buildings || {};
+  const count = builtCountOf(rod);
+  const rows = builtBonusRows(rod);
+  const sum = key => rows.filter(r => r.kind === key).reduce((a, r) => a + r.value, 0);
+  const totalSlava = sum('slava');
+  const totalIncome = sum('income');
+  const totalFlee = sum('fleeReduction');
+  const bonuses = `
+    <div class="outcome-box">
+      <div class="otitle">Постоянные бонусы</div>
+      ${totalSlava ? `<div class="effect-line pos">Знатность за постройки: +${totalSlava}</div>` : ''}
+      ${totalIncome ? `<div class="effect-line pos">Доход: +${totalIncome} руб. в ход</div>` : ''}
+      ${totalFlee ? `<div class="effect-line pos">Бегство крестьян: −${totalFlee} п. п.</div>` : ''}
+      ${!totalSlava && !totalIncome && !totalFlee ? `<div class="otext">Пока ничего не построено. Следующая возможность появится позже</div>` : ''}
+    </div>`;
+  const grid = nonVillage.map(b => {
+    const isBuilt = (built[b.id] || 0) > 0;
+    return `<div class="build-estate-item ${isBuilt ? 'built' : ''}" data-bid="${b.id}">
+      <div class="build-estate-icon">${b.emoji}</div>
+      <div class="build-estate-name">${isBuilt ? b.name : ''}</div>
+    </div>`;
+  }).join('');
+  return `<div class="build-overlay" id="build-estate-root">
+    <div class="build-modal build-estate">
+      <div class="build-modal-head">
+        <h2 class="build-title">Ваша усадьба</h2>
+        <div class="build-modal-sub">Построено: ${count} из ${nonVillage.length}</div>
+      </div>
+      <div class="build-estate-grid">${grid}</div>
+      ${bonuses}
+      <button class="choice-btn" id="btn-build-estate-close">Закрыть</button>
+    </div>
+  </div>`;
+}
+
 function bindRodScreen(){
   document.getElementById('btn-leave').onclick = ()=>{ currentRod=null; render(); };
   const rod = state.rods[currentRod];
@@ -350,6 +597,147 @@ function bindRodScreen(){
   const ev = state.events[idx];
 
   document.getElementById('btn-toggle-history').onclick = ()=>{ showHistory = !showHistory; render(); };
+
+  // ТЗ 22: кнопка «Усадьба» в шапке экрана рода
+  const estateBtn = document.getElementById('btn-estate');
+  if(estateBtn){
+    estateBtn.onclick = ()=>{ estateOpen = true; render(); };
+  }
+
+  // ТЗ 22: окно «Постройки» — пропуск
+  const bwSkip = document.getElementById('btn-build-skip');
+  if(bwSkip){
+    bwSkip.onclick = async ()=>{
+      if(busy) return;
+      buildPhase = 'skip';
+      render();
+    };
+  }
+  document.querySelectorAll('[data-build-cat]').forEach(btn=>{
+    btn.onclick = ()=>{
+      if(busy) return;
+      buildCat = btn.dataset.buildCat;
+      render();
+    };
+  });
+  document.querySelectorAll('.build-card').forEach(card=>{
+    card.onclick = ()=>{
+      if(busy) return;
+      if(buildPhase !== 'choose') return;
+      const bid = card.dataset.bid;
+      const b = buildingById(bid);
+      if(!b) return;
+      const rodObj = state.rods[currentRod];
+      const count = (rodObj.buildings || {})[bid] || 0;
+      const alreadyBuilt = b.maxCount === 1 ? count >= 1 : (b.maxCount !== null && b.maxCount !== undefined && count >= b.maxCount);
+      const gold = rodObj.resources.zoloto || 0;
+      const insufficient = gold < (b.price || 0);
+      if(alreadyBuilt || insufficient) return;
+      detailSource = 'window';
+      detailBuildingId = bid;
+      render();
+    };
+  });
+  const bwContinue = document.getElementById('btn-build-continue');
+  if(bwContinue){
+    bwContinue.onclick = async ()=>{
+      if(busy) return;
+      if(buildPhase === 'skip'){
+        const rodObj = state.rods[currentRod];
+        if(!rodObj.buildWindows) rodObj.buildWindows = {};
+        rodObj.buildWindows[buildEventId] = 'skipped';
+        await dbSet(`rods/${currentRod}/buildWindows/${buildEventId}`, 'skipped');
+        buildPhase = 'choose';
+        render();
+      } else if(buildPhase === 'result'){
+        buildPhase = 'choose';
+        buildResultInfo = null;
+        buildConfirmingId = null;
+        buildSelId = null;
+        render();
+      }
+    };
+  }
+
+  // ТЗ 22: подтверждение покупки
+  const buildConfirmRoot = document.getElementById('build-confirm-root');
+  if(buildConfirmRoot){
+    buildConfirmRoot.onclick = e => { if(e.target === buildConfirmRoot) buildPhase = 'choose'; buildSelId = null; buildConfirmingId = null; render(); };
+  }
+  const btnBuildConfirmYes = document.getElementById('btn-build-confirm-yes');
+  if(btnBuildConfirmYes){
+    btnBuildConfirmYes.onclick = async ()=>{
+      if(busy) return;
+      busy = true;
+      const r = await buyBuilding(currentRod, buildEventId, buildConfirmingId);
+      busy = false;
+      if(r.ok){
+        const nb = buildingById(buildConfirmingId);
+        const eff2 = resourceEffect(nb.onBuild);
+        const labels2 = {slava: 'Знатность', krestyane: 'Души', zoloto: 'Рубли'};
+        const lines = [];
+        Object.keys(eff2).forEach(k => { const v = eff2[k]; if(typeof v !== 'number' || !labels2[k]) return; lines.push(`<div class="effect-line ${v > 0 ? 'pos' : 'neg'}">${labels2[k]} ${v > 0 ? '+' : ''}${v}</div>`); });
+        if(nb.perTurn && typeof nb.perTurn.income === 'number') lines.push(`<div class="effect-line pos">Доход: +${nb.perTurn.income} руб. в ход</div>`);
+        if(nb.perTurn && typeof nb.perTurn.fleeReduction === 'number') lines.push(`<div class="effect-line pos">Бегство крестьян: −${nb.perTurn.fleeReduction} п. п.</div>`);
+        lines.push(`<div class="effect-line neg">Рубли −${nb.price || 0}</div>`);
+        buildPhase = 'result';
+        buildResultInfo = {buildingId: buildConfirmingId, name: nb.name, short: nb.short, lines: lines};
+        state.rods[currentRod] = r.value;
+        render();
+      } else {
+        buildPhase = 'choose';
+        render();
+      }
+    };
+  }
+  const btnBuildConfirmNo = document.getElementById('btn-build-confirm-no');
+  if(btnBuildConfirmNo){
+    btnBuildConfirmNo.onclick = ()=>{
+      buildPhase = 'choose';
+      buildSelId = null;
+      buildConfirmingId = null;
+      render();
+    };
+  }
+
+  // ТЗ 22: детальная карточка — «Построить» из окна или «Закрыть» из усадьбы
+  const buildDetailRoot = document.getElementById('build-detail-root');
+  if(buildDetailRoot){
+    buildDetailRoot.onclick = e => { if(e.target === buildDetailRoot) closeBuildDetail(); };
+  }
+  const btnBuildDetailYes = document.getElementById('btn-build-detail-yes');
+  if(btnBuildDetailYes){
+    btnBuildDetailYes.onclick = ()=>{
+      if(busy) return;
+      buildPhase = 'confirm';
+      buildConfirmingId = detailBuildingId;
+      buildSelId = detailBuildingId;
+      render();
+    };
+  }
+  const btnBuildDetailClose = document.getElementById('btn-build-detail-close');
+  if(btnBuildDetailClose){
+    btnBuildDetailClose.onclick = ()=>{ closeBuildDetail(); };
+  }
+
+  // ТЗ 22: экран «Ваша усадьба» — клик по построенному иконке открывает детальную карточку (только для чтения)
+  const buildEstateRoot = document.getElementById('build-estate-root');
+  if(buildEstateRoot){
+    buildEstateRoot.onclick = e => { if(e.target === buildEstateRoot) estateOpen = false; render(); };
+  }
+  document.querySelectorAll('.build-estate-item').forEach(item=>{
+    item.onclick = ()=>{
+      if(busy) return;
+      if(!item.classList.contains('built')) return;
+      detailSource = 'estate';
+      detailBuildingId = item.dataset.bid;
+      render();
+    };
+  });
+  const btnBuildEstateClose = document.getElementById('btn-build-estate-close');
+  if(btnBuildEstateClose){
+    btnBuildEstateClose.onclick = ()=>{ estateOpen = false; render(); };
+  }
 
   const rumorBtn = document.getElementById('btn-rumor-continue');
   if(rumorBtn){

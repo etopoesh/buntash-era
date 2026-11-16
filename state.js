@@ -7,7 +7,8 @@ function initialState(){
     auctions: {},
     national: {stability: 10, centralization: 10},
     releasedAssemblies: {},
-    majorityBonusResolved: {}
+    majorityBonusResolved: {},
+    buildings: null // ТЗ 22: каталог построек; null — не загружен, окно не показывается
   };
 }
 
@@ -129,6 +130,95 @@ function applyEffect(res, effect){
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Каталог построек и покупки (ТЗ 22).
+// ---------------------------------------------------------------------------
+// Каталог лежит в buildings.json (плюс/тз22/buildings.json), читаются как events.json.
+// null — каталог не загрузился: окно не показывается, покупки в игре нет.
+function buildingsList(){
+  const c = state.buildings;
+  if(!c || !Array.isArray(c.buildings)) return [];
+  return c.buildings;
+}
+function buildingById(id){
+  return buildingsList().find(b => b && b.id === id) || null;
+}
+// Сумма fleeReduction (в п. п.) от зданий, построенных в роде; null у эффекта — не учитываем.
+function fleeReductionOf(rod){
+  const built = (rod && rod.buildings) || {};
+  let sum = 0;
+  buildingsList().forEach(b => {
+    const count = built[b.id] || 0;
+    if(!count) return;
+    const fr = b.perTurn ? b.perTurn.fleeReduction : null;
+    if(typeof fr === 'number') sum += fr;
+  });
+  return sum;
+}
+// Готовые (числовые) бонусы по построенным зданиям: строки «Знатность за постройки», «Доход»,
+// «Бегство крестьян». У зданий с null в onBuild/perTurn готовых чисел нет — такие строки не показываются.
+function builtBonusRows(rod){
+  const built = (rod && rod.buildings) || {};
+  const rows = [];
+  buildingsList().forEach(b => {
+    const count = built[b.id] || 0;
+    if(!count) return;
+    const on = b.onBuild || {};
+    const pt = b.perTurn || {};
+    if(typeof on.slava === 'number') rows.push({kind: 'slava', value: on.slava});
+    if(typeof pt.income === 'number') rows.push({kind: 'income', value: pt.income});
+    if(typeof pt.fleeReduction === 'number') rows.push({kind: 'fleeReduction', value: pt.fleeReduction});
+  });
+  return rows;
+}
+// Количество построенных зданий рода (вотчина не считается — она не в «Усадьбе»).
+function builtCountOf(rod){
+  const built = (rod && rod.buildings) || {};
+  let n = 0;
+  buildingsList().forEach(b => {
+    if(b.id === 'votchina') return; // вотчина не отображается в усадьбе
+    if((built[b.id] || 0) > 0) n++;
+  });
+  return n;
+}
+
+// ТЗ 22 §6: покупка здания — одна атомарная транзакция по узлу рода.
+// Внутри фиксируются: окно ещё не решено, здание не превышает maxCount, золото ≥ цены.
+// Успешна: списывается цена, здание записывается у рода, применяется onBuild, ставится incomeMod
+// (прибавка к доходу с ключом building:{id}, без срока), окно помечается «куплено».
+// Не успешна — ничего не списывается (транзакция отменяется целиком).
+async function buyBuilding(rodName, evId, buildingId){
+  const b = buildingById(buildingId);
+  if(!b) return {ok: false};
+  const r = await dbTx('rods/' + rodName, cur => {
+    const rod = patchRod(cur || {});
+    if(rod.buildWindows && rod.buildWindows[evId]) return undefined; // окно уже решено
+    const built = rod.buildings || {};
+    const count = built[buildingId] || 0;
+    if(b.maxCount !== null && b.maxCount !== undefined && count >= b.maxCount) return undefined;
+    const price = b.price || 0;
+    const gold = (rod.resources || {}).zoloto || 0;
+    if(gold < price) return undefined;
+    const res = Object.assign({}, rod.resources);
+    res.zoloto = (res.zoloto || 0) - price;
+    const eff = resourceEffect(b.onBuild);
+    if(typeof eff.slava === 'number') res.slava = (res.slava || 0) + eff.slava;
+    if(typeof eff.krestyane === 'number') res.krestyane = (res.krestyane || 0) + eff.krestyane;
+    if(typeof eff.zoloto === 'number') res.zoloto = (res.zoloto || 0) + eff.zoloto;
+    if(res.krestyane < 20) res.krestyane = 20;
+    const nb = Object.assign({}, built);
+    nb[buildingId] = (count || 0) + 1;
+    const rod2 = Object.assign({}, rod, {resources: res, buildings: nb});
+    rod2.buildWindows = Object.assign({}, rod.buildWindows, {[evId]: 'bought'});
+    if(typeof b.perTurn === 'object' && b.perTurn && typeof b.perTurn.income === 'number'){
+      rod2.incomeMods = Object.assign({}, rod.incomeMods, {['building:' + buildingId]: {amount: b.perTurn.income}});
+    }
+    return rod2;
+  });
+  if(!r.committed) return {ok: false};
+  return {ok: true, rod: r.value};
+}
+
 function makeRod(name, estate){
   return {
     resources: defaultResources(estate),
@@ -141,7 +231,9 @@ function makeRod(name, estate){
     progress: 0,
     estate: estate || 'dvoryane',
     titles: {},
-    favor: {}
+    favor: {},
+    buildings: {},
+    buildWindows: {}
   };
 }
 
@@ -176,6 +268,9 @@ function patchRod(rod){
   if (typeof rod.casualtyReduction !== 'number') rod.casualtyReduction = 0;
   if (!rod.seenArrivalBonus) rod.seenArrivalBonus = {};
   if (!rod.seenMilestones) rod.seenMilestones = {};
+  // ТЗ 22: состояние покупок и результатов окна «Постройки»
+  if (!rod.buildings) rod.buildings = {};
+  if (!rod.buildWindows) rod.buildWindows = {};
   return rod;
 }
 
@@ -224,8 +319,8 @@ function patchAuction(auction){
 // Расчёт тика экономики — чистая функция (ничего не мутирует). Её вызывают и реальное применение
 // (applyEconomyTick), и прикидка «Хозяйство за ход» на экране рода, формулы не дублируются.
 // Возвращает составляющие: бегство от централизации и от стабильности (%), крестьян до/после (с полом 20),
-// их изменение и доход в рублях за ход.
-function computeEconomyTick(resources, estate, national, incomeMods){
+// их изменение и доход в рублях за ход. fleeReduction — сумма бонусов от построек (ТЗ 22), итог ≥ 0.
+function computeEconomyTick(resources, estate, national, incomeMods, fleeReduction){
   const nat = national || {stability: 10, centralization: 10};
   const krestyaneBefore = resources.krestyane;
   const mods = Array.isArray(incomeMods) ? incomeMods : [];
@@ -236,8 +331,7 @@ function computeEconomyTick(resources, estate, national, incomeMods){
   const fleeCentralPct = nat.centralization < 5 ? (estate === 'boyare' ? 2 : 4) : 0;
   // Бегство от стабильности — ступенями: ниже 3 → 6%, от 3 до 5 → 3%, от 5 и выше → 0%
   const fleeStabilityPct = nat.stability < 3 ? 6 : (nat.stability < 5 ? 3 : 0);
-
-  const fleePct = fleeCentralPct + fleeStabilityPct;
+  const fleePct = Math.max(0, fleeCentralPct + fleeStabilityPct - (fleeReduction || 0));
   // R5: потеря считается один раз от текущих душ; округляется сама потеря, а не итог
   const fleeLoss = fleePct !== 0 ? roundHalfUp(krestyaneBefore * fleePct / 100) : 0;
   const krestyaneAfter = Math.max(20, krestyaneBefore - fleeLoss);
@@ -305,7 +399,7 @@ function activeIncomeMods(rod, turn){
 // Тик принадлежит ходу turn: доход = души × 0.1 + сумма активных на этом ходу прибавок (R4).
 // Мутирует rod.resources и возвращает дельты.
 function applyEconomyTick(rod, turn){
-  const t = computeEconomyTick(rod.resources, rod.estate, state.national, activeIncomeMods(rod, turn));
+  const t = computeEconomyTick(rod.resources, rod.estate, state.national, activeIncomeMods(rod, turn), fleeReductionOf(rod));
   rod.resources.zoloto += t.zolotoDelta;
   rod.resources.krestyane = t.krestyaneAfter;
   return {zolotoDelta: t.zolotoDelta, krestyaneDelta: t.krestyaneDelta};
