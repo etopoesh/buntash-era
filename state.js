@@ -397,6 +397,14 @@ function choiceMoneyCost(choice, rod, resources, turn){
   return required;
 }
 
+// Самая дешёвая статья среди доступных роду вариантов. При отрицательном балансе
+// разрешаем выбрать только её — игрок уходит в долг, но игра не встаёт.
+function minChoiceMoneyCost(choices, rod, resources, turn){
+  const list = (choices || []).filter(c => !c.requiresEstate || c.requiresEstate === rod.estate);
+  if(!list.length) return 0;
+  return Math.min.apply(null, list.map(c => choiceMoneyCost(c, rod, resources, turn)));
+}
+
 // Три блока игры: 0–25, 26–43, 44–63. Нужен для таймера 40 минут в шапке игрока.
 function actOfIndex(i){
   if(i >= 44) return 3;

@@ -477,16 +477,27 @@
     const progressBefore = rod.progress;
     // Экран рода берёт событие из rod.progress, а не из state.currentIndex.
     await dbSet(`rods/${name}/progress`, 1);
-    await txResources(name, res => ({...res, zoloto: 10}));
-    await waitFor(() => rodOf(name).resources.zoloto === 10 && rodOf(name).progress === 1);
+    await txResources(name, res => ({...res, zoloto: -10}));
+    await waitFor(() => rodOf(name).resources.zoloto === -10 && rodOf(name).progress === 1);
     currentRod = name; role = 'rod'; render();
     await idle();
     await sleep(60);
     const choiceBtns = $$('[data-key]');
     const disabledBtn = choiceBtns.find(b => b.disabled);
-    check('ТЗ 23: дорогой вариант при отрицательном балансе не нажимается',
+    check('ТЗ 23: при отрицательном балансе активен только самый дешёвый вариант',
       !!disabledBtn && choiceBtns.some(b => !b.disabled),
       `всего ${choiceBtns.length}, недоступных ${choiceBtns.filter(b => b.disabled).length}`);
+    const sobor = state.events.find(e => e.id === 'sobor-1');
+    const rNow = rodOf(name);
+    const minMoney = minChoiceMoneyCost(sobor.choices, rNow, rNow.resources, sobor.turn);
+    const expectedKeys = sobor.choices
+      .filter(c => !c.requiresEstate || c.requiresEstate === rNow.estate)
+      .filter(c => choiceMoneyCost(c, rNow, rNow.resources, sobor.turn) === minMoney)
+      .map(c => c.key);
+    const enabledKeys = choiceBtns.filter(b => !b.disabled).map(b => b.dataset.key);
+    check('ТЗ 23: в минусе разрешённый вариант — самый дешёвый',
+      enabledKeys.length === expectedKeys.length && expectedKeys.every(k => enabledKeys.includes(k)),
+      `ожидалось ${expectedKeys.join(',')}, доступно ${enabledKeys.join(',')}`);
     if(disabledBtn){
       const key = disabledBtn.dataset.key;
       await idle();
@@ -494,6 +505,16 @@
       await sleep(120);
       check('ТЗ 23: неактивная кнопка не применяет эффект',
         !(rodOf(name).answers || {})['sobor-1'], `вариант ${key}`);
+    }
+    const cheapestBtn = choiceBtns.find(b => !b.disabled);
+    if(cheapestBtn){
+      await idle();
+      cheapestBtn.click();
+      await waitFor(() => !!(rodOf(name).answers || {})['sobor-1'], 3000);
+      check('ТЗ 23: в долг можно выбрать самый дешёвый вариант',
+        !!(rodOf(name).answers || {})['sobor-1'], `вариант ${cheapestBtn.dataset.key}`);
+      await dbSet(`rods/${name}/answers/sobor-1`, null);
+      await waitFor(() => !(rodOf(name).answers || {})['sobor-1']);
     }
     await txResources(name, res => ({...res, zoloto: goldBefore}));
     await dbSet(`rods/${name}/progress`, progressBefore);

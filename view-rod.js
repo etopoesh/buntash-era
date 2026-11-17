@@ -371,11 +371,18 @@ function rodScreen(){
           <p class="event-desc">${ev.description}</p>
           ${rodCardLine}
           ${ev.choices.some(c=>c.druzhinaTiers) ? `<p class="event-desc">Ваши боевые холопы: <strong>${druzhinaOf(rod.resources)}</strong></p>` : ''}
-          ${availableChoices.map(c=>{
-            const cost = choiceMoneyCost(c, rod, rod.resources, ev.turn);
-            const tooExpensive = cost > (rod.resources.zoloto || 0);
-            return `<button class="choice-btn" data-key="${c.key}"${tooExpensive ? ' disabled title="Не хватает рублей"' : ''}>${c.label}</button>`;
-          }).join('')}
+          ${(()=>{
+            const costs = availableChoices.map(c => choiceMoneyCost(c, rod, rod.resources, ev.turn));
+            const minCost = costs.length ? Math.min(...costs) : 0;
+            return availableChoices.map((c, i) => {
+              const cost = costs[i];
+              // Отрицательный баланс: доступен только самый дешёвый вариант — это долг.
+              const tooExpensive = rod.resources.zoloto < 0
+                ? cost !== minCost
+                : (cost > 0 && cost > rod.resources.zoloto);
+              return `<button class="choice-btn" data-key="${c.key}"${tooExpensive ? ' disabled title="Не хватает рублей"' : ''}>${c.label}</button>`;
+            }).join('');
+          })()}
         </div>`;
     } else {
       const choice = ev.choices.find(c=>c.key===answered.choiceKey);
@@ -824,7 +831,16 @@ function bindRodScreen(){
       // R7/R8: все формулы — по ресурсам на момент клика, до любых изменений этим выбором
       const res0 = rod.resources;
       // ТЗ 23: вариант, требующий денег, недоступен при нехватке рублей (кнопка уже неактивна).
-      if(choiceMoneyCost(choice, rod, res0, ev.turn) > (res0.zoloto || 0)){ busy = false; return; }
+      // Бесплатный вариант доступен даже при отрицательном балансе.
+      const requiredMoney = choiceMoneyCost(choice, rod, res0, ev.turn);
+      const minMoney = minChoiceMoneyCost(ev.choices, rod, res0, ev.turn);
+      // В минусе можно выбрать только самый дешёвый вариант и уйти в ещё больший долг.
+      if(res0.zoloto < 0
+        ? requiredMoney !== minMoney
+        : (requiredMoney > 0 && requiredMoney > res0.zoloto)){
+        busy = false;
+        return;
+      }
       const druzhina = druzhinaOf(res0);
       const eff = choice.effect || {};
       // Сословный эффект — плоский объект: {slava/krestyane/zoloto, text?, income?} (см. vec estateMerge)

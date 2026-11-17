@@ -28,7 +28,7 @@ function loadRules(file){
     '\n;globalThis.__rules = {applyEffect, resolveEffect, computeEconomyTick, applyEconomyTick, pendingMilestones, SLAVA_MILESTONES,' +
     ' defaultResources, druzhinaOf, findConditionalEffect, getArrivalBonuses, arrivalBonusKey, initialState,' +
     ' majorityOf, bribeCost, computeMilitary, activeIncomeMods, finalRanking, worldVerdict, roundHalfUp, fmtDelta, resourceEffect,' +
-     ' militaryEquipmentCost, choiceMoneyCost, choiceMilitaryOf, actOfIndex};';
+     ' militaryEquipmentCost, choiceMoneyCost, minChoiceMoneyCost, choiceMilitaryOf, actOfIndex};';
   const sandbox = {};
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox, {filename: file});
@@ -132,7 +132,12 @@ function runOne(strategyName, estate, seedForRun){
     } else {
       const estateOk = ev.choices.filter(c => !c.requiresEstate || c.requiresEstate === estate);
       // ТЗ 23: недоступные по деньгам варианты не выбираются; если все недоступны — оставляем как есть.
-      const affordable = estateOk.filter(c => R.choiceMoneyCost(c, rod, rod.resources, ev.turn) <= rod.resources.zoloto);
+      const minCost = R.minChoiceMoneyCost(ev.choices, rod, rod.resources, ev.turn);
+      const affordable = estateOk.filter(c => {
+        const need = R.choiceMoneyCost(c, rod, rod.resources, ev.turn);
+        // В долг можно уйти только по самому дешёвому варианту.
+        return rod.resources.zoloto < 0 ? need === minCost : (need === 0 || need <= rod.resources.zoloto);
+      });
       const options = affordable.length ? affordable : estateOk;
       let pick;
       if(strategy.score){
