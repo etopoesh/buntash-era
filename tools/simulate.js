@@ -93,7 +93,9 @@ function runOne(strategyName, estate, seedForRun){
         const m = R.computeMilitary(res0.krestyane, choice.military, rod.casualtyReduction ? [rod.casualtyReduction] : []);
         for(const k in m.scaleEffect) eff[k] = (eff[k] || 0) + m.scaleEffect[k];
         if(m.lost) eff.krestyane = (eff.krestyane || 0) - m.lost;
-        const equipmentCost = R.militaryEquipmentCost(m.fielded);
+        // Снаряжение платим со второго хода; на первом ходе расхода нет.
+        const equipmentCost = (ev.turn === undefined || ev.turn >= 2)
+          ? R.militaryEquipmentCost(m.fielded) : 0;
         if(equipmentCost) eff.zoloto = (eff.zoloto || 0) - equipmentCost;
       }
       resources = R.applyEffect(res0, eff);
@@ -130,7 +132,7 @@ function runOne(strategyName, estate, seedForRun){
     } else {
       const estateOk = ev.choices.filter(c => !c.requiresEstate || c.requiresEstate === estate);
       // ТЗ 23: недоступные по деньгам варианты не выбираются; если все недоступны — оставляем как есть.
-      const affordable = estateOk.filter(c => R.choiceMoneyCost(c, rod, rod.resources) <= rod.resources.zoloto);
+      const affordable = estateOk.filter(c => R.choiceMoneyCost(c, rod, rod.resources, ev.turn) <= rod.resources.zoloto);
       const options = affordable.length ? affordable : estateOk;
       let pick;
       if(strategy.score){

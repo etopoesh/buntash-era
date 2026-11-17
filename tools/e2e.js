@@ -439,22 +439,35 @@
       reductions['court-hut'] === 0.5 && reductions['guardhouse'] === 0.5 && reductions['prison-hut'] === 1,
       JSON.stringify(reductions));
 
-    const pct = (c, s, estate, reduction) => computeEconomyTick(
+    const calc = (c, s, estate, reduction) => computeEconomyTick(
       {krestyane: 200}, estate, {stability: s, centralization: c}, [], reduction
-    ).fleePct;
-    check('ТЗ 23: старт 6 / 8 — бегства нет', pct(6, 8, 'boyare') === 0);
-    check('ТЗ 23: централизация ниже 5 — дворяне +1, бояре −1 (минимум 0)',
-      pct(4, 10, 'dvoryane') === 1 && pct(4, 10, 'boyare') === 0);
-    check('ТЗ 23: стабильность 4–6 — 1,5, стабильность 3 и ниже — 3',
-      pct(10, 4, 'boyare') === 1.5 && pct(10, 2, 'boyare') === 3);
-    check('ТЗ 23: здания снижают процент, итог не ниже нуля',
-      pct(10, 4, 'boyare', 0.5) === 1 && pct(10, 2, 'boyare', 3) === 0);
+    );
+    check('ТЗ 23: старт 6 / 8 — бегства нет у обоих сословий',
+      calc(6, 8, 'boyare').fleePct === 0 && calc(6, 8, 'dvoryane').fleePct === 0);
+    check('ТЗ 23: плохая централизация — дворяне теряют 1%, бояре получают +1%',
+      calc(4, 10, 'dvoryane').fleePct === 1 &&
+      calc(4, 10, 'boyare').boyarGainPct === 1 && calc(4, 10, 'boyare').krestyaneDelta === 2,
+      `дворяне ${calc(4, 10, 'dvoryane').fleePct}%, бояре +${calc(4, 10, 'boyare').krestyaneDelta}`);
+    check('ТЗ 23: стабильность одинаково у всех — 4–6 даёт 1,5%, ≤3 даёт 3%',
+      calc(10, 4, 'boyare').fleePct === 1.5 && calc(10, 2, 'boyare').fleePct === 3 &&
+      calc(10, 4, 'dvoryane').fleePct === 1.5 && calc(10, 2, 'dvoryane').fleePct === 3);
+    check('ТЗ 23: все постройки удерживают 2% — дворянин −2%, боярин 0',
+      calc(4, 3, 'dvoryane', 2).fleePct === 2 && calc(4, 3, 'dvoryane', 2).krestyaneDelta === -4 &&
+      calc(4, 3, 'boyare', 2).fleePct === 1 && calc(4, 3, 'boyare', 2).netPct === 0 &&
+      calc(4, 3, 'boyare', 2).krestyaneDelta === 0,
+      `дворянин ${calc(4, 3, 'dvoryane', 2).krestyaneDelta}, боярин ${calc(4, 3, 'boyare', 2).krestyaneDelta}`);
     check('ТЗ 23: знатность не уходит ниже нуля',
       applyEffect({slava: 1, krestyane: 200, zoloto: 0}, {slava: -10}).slava === 0);
     const mil = computeMilitary(200, {deploy: 1}, []);
     check('ТЗ 23: снаряжение — 5 рублей за выставленного холопа',
       mil.fielded === 10 && militaryEquipmentCost(mil.fielded) === 50,
       `выставлено ${mil.fielded}, расход ${militaryEquipmentCost(mil.fielded)}`);
+    const milChoice = state.events.find(e => e.id === 'kazan-2').choices[0];
+    const res200 = {krestyane: 200, slava: 10, zoloto: 100};
+    check('ТЗ 23: снаряжение берётся со второго хода, не с первого',
+      choiceMoneyCost(milChoice, {estate: 'boyare'}, res200, 1) === 0 &&
+      choiceMoneyCost(milChoice, {estate: 'boyare'}, res200, 2) === 50,
+      `ход 1: ${choiceMoneyCost(milChoice, {estate: 'boyare'}, res200, 1)}, ход 2: ${choiceMoneyCost(milChoice, {estate: 'boyare'}, res200, 2)}`);
 
     // Недоступная кнопка: у рода мало рублей, дорогой вариант должен быть неактивен.
     const name = 'ТЕСТ-БОЯРЕ';

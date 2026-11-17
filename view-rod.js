@@ -53,8 +53,9 @@ function turnSummaryHtml(resources, estate, rod, turn, equipmentCost){
   const lines = [];
   if(t.fleePct > 0){
     lines.push('Бегство крестьян:');
-    lines.push(t.krestyaneDelta < 0 ? `Крестьяне: −${-t.krestyaneDelta}` : 'Крестьяне: 0');
+    lines.push(`Крестьяне: −${t.fleeLoss}`);
   }
+  if(t.boyarGainPct > 0) lines.push(`Приток крестьян: +${t.gain}`);
   if(equipmentCost > 0) lines.push(`Расходы на снаряжение войска: −${equipmentCost}`);
   lines.push(`Рубли: +${t.zolotoDelta}`);
   const rewards = pendingMilestones(currentRodObject(), resources.slava)
@@ -371,7 +372,7 @@ function rodScreen(){
           ${rodCardLine}
           ${ev.choices.some(c=>c.druzhinaTiers) ? `<p class="event-desc">Ваши боевые холопы: <strong>${druzhinaOf(rod.resources)}</strong></p>` : ''}
           ${availableChoices.map(c=>{
-            const cost = choiceMoneyCost(c, rod, rod.resources);
+            const cost = choiceMoneyCost(c, rod, rod.resources, ev.turn);
             const tooExpensive = cost > (rod.resources.zoloto || 0);
             return `<button class="choice-btn" data-key="${c.key}"${tooExpensive ? ' disabled title="Не хватает рублей"' : ''}>${c.label}</button>`;
           }).join('')}
@@ -606,7 +607,7 @@ function renderEstateOverlay(rod){
       <div class="otitle">Постоянные бонусы</div>
       ${totalSlava ? `<div class="effect-line pos">Знатность за постройки: +${totalSlava}</div>` : ''}
       ${totalIncome ? `<div class="effect-line pos">Доход: +${totalIncome} руб. в ход</div>` : ''}
-      ${totalFlee ? `<div class="effect-line pos">Бегство крестьян: −${totalFlee} п. п.</div>` : ''}
+      ${totalFlee ? '<div class="effect-line pos">Бегство крестьян: меньше</div>' : ''}
       ${!totalSlava && !totalIncome && !totalFlee ? `<div class="otext">Пока ничего не построено. Следующая возможность появится позже</div>` : ''}
     </div>`;
   const grid = nonVillage.map(b => {
@@ -742,7 +743,7 @@ function bindRodScreen(){
         const lines = [];
         Object.keys(eff2).forEach(k => { const v = eff2[k]; if(typeof v !== 'number' || !labels2[k]) return; lines.push(`<div class="effect-line ${v > 0 ? 'pos' : 'neg'}">${labels2[k]} ${v > 0 ? '+' : ''}${v}</div>`); });
         if(nb.perTurn && typeof nb.perTurn.income === 'number') lines.push(`<div class="effect-line pos">Доход: +${nb.perTurn.income} руб. в ход</div>`);
-        if(nb.perTurn && typeof nb.perTurn.fleeReduction === 'number') lines.push(`<div class="effect-line pos">Бегство крестьян: −${nb.perTurn.fleeReduction} п. п.</div>`);
+        if(nb.perTurn && typeof nb.perTurn.fleeReduction === 'number') lines.push('<div class="effect-line pos">Бегство крестьян: меньше</div>');
         lines.push(`<div class="effect-line neg">Рубли −${nb.price || 0}</div>`);
         buildPhase = 'result';
         buildResultInfo = {buildingId: nb.id, name: nb.name, short: nb.short, lines: lines};
@@ -823,7 +824,7 @@ function bindRodScreen(){
       // R7/R8: все формулы — по ресурсам на момент клика, до любых изменений этим выбором
       const res0 = rod.resources;
       // ТЗ 23: вариант, требующий денег, недоступен при нехватке рублей (кнопка уже неактивна).
-      if(choiceMoneyCost(choice, rod, res0) > (res0.zoloto || 0)){ busy = false; return; }
+      if(choiceMoneyCost(choice, rod, res0, ev.turn) > (res0.zoloto || 0)){ busy = false; return; }
       const druzhina = druzhinaOf(res0);
       const eff = choice.effect || {};
       // Сословный эффект — плоский объект: {slava/krestyane/zoloto, text?, income?} (см. vec estateMerge)
@@ -835,8 +836,9 @@ function bindRodScreen(){
       // Военный расчёт (R9): от душ до выбора, со снижениями потерь, накопленными родом ранее
       const reductions = rod.casualtyReduction ? [rod.casualtyReduction] : [];
       const mil = choice.military ? computeMilitary(res0.krestyane, choice.military, reductions) : null;
-      // ТЗ 23: 5 рублей за каждого выставленного холопа — расход на снаряжение войска.
-      const equipmentCost = mil ? militaryEquipmentCost(mil.fielded) : 0;
+      // ТЗ 23: 5 рублей за каждого выставленного холопа, но только со второго хода.
+      const equipmentCost = mil && (ev.turn === undefined || ev.turn >= 2)
+        ? militaryEquipmentCost(mil.fielded) : 0;
       // Флаги, которые ставит выбор, — сразу видны условным эффектам
       const flagsAfter = Object.assign({}, rod.flags);
       (choice.setFlags || []).forEach(flag => { flagsAfter[flag] = true; });

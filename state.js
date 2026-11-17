@@ -322,7 +322,8 @@ function patchAuction(auction){
 // (applyEconomyTick), и прикидка «Хозяйство за ход» на экране рода, формулы не дублируются.
 // Возвращает составляющие: бегство от централизации и от стабильности (%), крестьян до/после (с полом 20),
 // их изменение и доход в рублях за ход. fleeReduction — сумма бонусов от построек (ТЗ 22), итог ≥ 0.
-// ТЗ 23: процент потери — сумма модификаторов централизации и стабильности, минимум 0.
+// ТЗ 23: процент потери — стабильность + бегство от централизации − постройки, минимум 0.
+// У бояр при плохой централизации сверх этого идёт отдельный прирост +1% крестьян.
 function computeEconomyTick(resources, estate, national, incomeMods, fleeReduction){
   const nat = national || {stability: 8, centralization: 6};
   const krestyaneBefore = resources.krestyane;
@@ -330,18 +331,26 @@ function computeEconomyTick(resources, estate, national, incomeMods, fleeReducti
   // Доход: 0.1 (рубля) за одного крестьянина, итоговая сумма за ход округляется в большую сторону.
   const income = Math.ceil(krestyaneBefore * 0.1 + mods.reduce((a, b) => a + b, 0));
 
-  // Централизация: больше 5 — 0%; меньше 5 — дворяне +1%, бояре −1%; ровно 5 — 0%.
-  const fleeCentralPct = nat.centralization > 5 ? 0
-    : (nat.centralization < 5 ? (estate === 'boyare' ? -1 : 1) : 0);
-  // Стабильность: 7 и выше — 0%; 4–6 — +1,5%; 3 и ниже — 3%.
+  // Стабильность — одинаково для обоих сословий: ≥7 — 0%, 4–6 — 1,5%, ≤3 — 3%.
   const fleeStabilityPct = nat.stability >= 7 ? 0 : (nat.stability >= 4 ? 1.5 : 3);
-  const rawFleePct = fleeCentralPct + fleeStabilityPct - (fleeReduction || 0);
+  // Централизация — плохая (<5) или хорошая (≥5). При плохой дворяне дополнительно
+  // теряют 1%, а у бояр, наоборот, приходят +1% крестьян (бегут от дворян к боярам).
+  const badCentral = nat.centralization < 5;
+  const fleeCentralPct = badCentral && estate !== 'boyare' ? 1 : 0;
+  const boyarGainPct = badCentral && estate === 'boyare' ? 1 : 0;
+  // Постройки удерживают только бегство: дорогая 1 п. п., две дешёвые по 0,5 п. п.
+  const rawFleePct = fleeStabilityPct + fleeCentralPct - (fleeReduction || 0);
   const fleePct = Math.max(0, Math.round(rawFleePct * 100) / 100);
-  // R5: потеря считается один раз от текущих душ; округляется сама потеря, а не итог
+  const netPct = boyarGainPct - fleePct;
+  // Округляем итоговое изменение один раз: так +1% и −1,5% дают −0,5%, а не 0.
+  const netChange = netPct !== 0 ? roundHalfUp(krestyaneBefore * netPct / 100) : 0;
   const fleeLoss = fleePct !== 0 ? roundHalfUp(krestyaneBefore * fleePct / 100) : 0;
-  const krestyaneAfter = Math.max(20, krestyaneBefore - fleeLoss);
+  const gain = boyarGainPct !== 0 ? roundHalfUp(krestyaneBefore * boyarGainPct / 100) : 0;
+  const krestyaneAfter = Math.max(20, krestyaneBefore + netChange);
 
-  return {zolotoDelta: income, fleeCentralPct: fleeCentralPct, fleeStabilityPct: fleeStabilityPct, fleePct: fleePct, fleeLoss: fleeLoss, krestyaneBefore: krestyaneBefore, krestyaneAfter: krestyaneAfter, krestyaneDelta: krestyaneAfter - krestyaneBefore};
+  return {zolotoDelta: income, fleeCentralPct: fleeCentralPct, fleeStabilityPct: fleeStabilityPct,
+    fleePct: fleePct, fleeLoss: fleeLoss, boyarGainPct: boyarGainPct, gain: gain, netPct: netPct,
+    krestyaneBefore: krestyaneBefore, krestyaneAfter: krestyaneAfter, krestyaneDelta: krestyaneAfter - krestyaneBefore};
 }
 
 function roundHalfUp(x){
@@ -369,7 +378,8 @@ function choiceMilitaryOf(choice, rod, resources){
 
 // Сколько рублей должно быть в казне, чтобы вариант был доступен (ТЗ 23).
 // Считаем все денежные статьи вместе: прямой расход, посул, снаряжение холопов.
-function choiceMoneyCost(choice, rod, resources){
+// Снаряжение не берем в первом ходе — платим начиная со второго (turn >= 2).
+function choiceMoneyCost(choice, rod, resources, turn){
   if(!choice) return 0;
   const eff = choice.effect || {};
   const estateEff = choice.effectByEstate && choice.effectByEstate[rod.estate];
@@ -383,7 +393,7 @@ function choiceMoneyCost(choice, rod, resources){
   });
   if(eff.bribe !== undefined) required += bribeCost(eff.bribe, resources.slava);
   const mil = choiceMilitaryOf(choice, rod, resources);
-  if(mil) required += militaryEquipmentCost(mil.fielded);
+  if(mil && (turn === undefined || turn >= 2)) required += militaryEquipmentCost(mil.fielded);
   return required;
 }
 
