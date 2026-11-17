@@ -28,7 +28,7 @@ function loadRules(file){
     '\n;globalThis.__rules = {applyEffect, resolveEffect, computeEconomyTick, applyEconomyTick, pendingMilestones, SLAVA_MILESTONES,' +
     ' defaultResources, druzhinaOf, findConditionalEffect, getArrivalBonuses, arrivalBonusKey, initialState,' +
     ' majorityOf, bribeCost, computeMilitary, activeIncomeMods, finalRanking, worldVerdict, roundHalfUp, fmtDelta, resourceEffect,' +
-     ' militaryEquipmentCost, choiceMoneyCost, minChoiceMoneyCost, choiceMilitaryOf, actOfIndex};';
+     ' militaryEquipmentCost, choiceMoneyCost, minChoiceMoneyCost, choiceMilitaryOf, effectiveMilitary, actOfIndex};';
   const sandbox = {};
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox, {filename: file});
@@ -85,12 +85,12 @@ function runOne(strategyName, estate, seedForRun){
     } else {
       (choice.setFlags || []).forEach(f => { flags[f] = true; });
       const druzhina = R.druzhinaOf(res0);
-      let eff = R.resolveEffect(choice, rod, druzhina);
-      const cond = R.findConditionalEffect(choice, {flags});
-      if(cond && cond.effect) for(const k in cond.effect) eff[k] = (eff[k] || 0) + (cond.effect[k] || 0);
+      // resolveEffect сам применяет подходящие conditionalEffects; передаём флаги с учётом setFlags.
+      let eff = R.resolveEffect(choice, {flags, estate, resources: res0}, druzhina);
       // Военный расчёт по выбранным ресурсам (R9): шкала «+1 за каждого выставленного» + потери
-      if(choice.military){
-        const m = R.computeMilitary(res0.krestyane, choice.military, rod.casualtyReduction ? [rod.casualtyReduction] : []);
+      const milSpec = R.effectiveMilitary(choice, {flags, estate}, res0);
+      if(milSpec){
+        const m = R.computeMilitary(res0.krestyane, milSpec, rod.casualtyReduction ? [rod.casualtyReduction] : []);
         for(const k in m.scaleEffect) eff[k] = (eff[k] || 0) + m.scaleEffect[k];
         if(m.lost) eff.krestyane = (eff.krestyane || 0) - m.lost;
         // Снаряжение платим со второго хода; на первом ходе расхода нет.

@@ -849,16 +849,17 @@ function bindRodScreen(){
       const incSpec = eff.income || (estateObj && estateObj.income) || null;
       // Посул: от знатности до выбора (R7)
       const bribePaid = eff.bribe !== undefined ? bribeCost(eff.bribe, res0.slava) : 0;
-      // Военный расчёт (R9): от душ до выбора, со снижениями потерь, накопленными родом ранее
-      const reductions = rod.casualtyReduction ? [rod.casualtyReduction] : [];
-      const mil = choice.military ? computeMilitary(res0.krestyane, choice.military, reductions) : null;
-      // ТЗ 23: 5 рублей за каждого выставленного холопа, но только со второго хода.
-      const equipmentCost = mil && (ev.turn === undefined || ev.turn >= 2)
-        ? militaryEquipmentCost(mil.fielded) : 0;
-      // Флаги, которые ставит выбор, — сразу видны условным эффектам
+      // Флаги, которые ставит выбор, — сразу видны условным эффектам и условной шкале награды
       const flagsAfter = Object.assign({}, rod.flags);
       (choice.setFlags || []).forEach(flag => { flagsAfter[flag] = true; });
       const rodForConds = {flags: flagsAfter, estate: rod.estate, resources: res0};
+      // Военный расчёт (R9): от душ до выбора, со снижениями потерь и условной шкалой награды
+      const reductions = rod.casualtyReduction ? [rod.casualtyReduction] : [];
+      const milSpec = effectiveMilitary(choice, rodForConds, res0);
+      const mil = milSpec ? computeMilitary(res0.krestyane, milSpec, reductions) : null;
+      // ТЗ 23: 5 рублей за каждого выставленного холопа, но только со второго хода.
+      const equipmentCost = mil && (ev.turn === undefined || ev.turn >= 2)
+        ? militaryEquipmentCost(mil.fielded) : 0;
       // Слияние (R8): общий эффект + эффект сословия + условная добавка + военные эффекты + посул — один раз
       let combined = resolveEffect(choice, rodForConds, druzhina);
       if(mil){

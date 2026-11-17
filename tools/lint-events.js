@@ -132,6 +132,9 @@ filtered.forEach(e => {
           mil.scale.forEach(s => {
             if (['fielded', 'missing', 'due', 'extra'].indexOf(s.by) === -1) err('eventsLintMilitary: неизвестный by=' + s.by + ' у ' + e.id + '/' + c.key);
             if (typeof s.every !== 'number' || !Number.isInteger(s.every) || s.every < 1) err('eventsLintMilitary: bad scale.every у ' + e.id + '/' + c.key);
+            ['requiresFlag', 'requiresNotFlag'].forEach(k => {
+              if(s[k] && !getSetFlagTurn(s[k], e.turn)) err('eventsLintFlags: military.scale.' + k + ' ' + s[k] + ' у ' + e.id + '/' + c.key + ' не найдена ставка ранее');
+            });
             if (s.effect) checkEffectsAnywhere(s.effect, e.id + '#' + c.key + '#milScale');
           });
         }
@@ -179,13 +182,23 @@ filtered.forEach(e => {
       checkEffectsAnywhere(c.majorityBonus && c.majorityBonus.nationalEffect, e.id + '#' + c.key + '#majorityBonus');
       checkEffectsAnywhere(c.arrivalBonus && c.arrivalBonus.effect, e.id + '#' + c.key + '#arrivalBonus');
       (c.conditionalEffects || []).forEach((ce, i) => {
+        ['requiresFlag', 'requiresNotFlag'].forEach(k => {
+          if(ce[k] && !getSetFlagTurn(ce[k], e.turn)) err('eventsLintFlags: conditionalEffects.' + k + ' ' + ce[k] + ' у ' + e.id + '/' + c.key + ' не найдена ставка ранее');
+        });
         checkEffectsAnywhere(ce.effect, e.id + '#' + c.key + '#condEff' + i);
         checkEffectsAnywhere(ce.nationalEffect, e.id + '#' + c.key + '#condEff' + i + '#national');
         const cim = ce.military;
         if (cim) {
           if (typeof cim.deploy !== 'number' || cim.deploy < 0 || cim.deploy > 1) err('eventsLintMilitary: deploy у ' + e.id + '#' + c.key + '#condEff' + i + ' должен быть числом в [0,1]');
           if (cim.casualties !== undefined && (typeof cim.casualties !== 'number' || cim.casualties < 0 || cim.casualties > 1)) err('eventsLintMilitary: casualties у ' + e.id + '#' + c.key + '#condEff' + i + ' должен быть числом в [0,1]');
-          if (Array.isArray(cim.scale)) cim.scale.forEach(s => { if (['fielded', 'missing', 'due', 'extra'].indexOf(s.by) === -1) err('eventsLintMilitary: неизвестный by=' + s.by); if (typeof s.every !== 'number' || !Number.isInteger(s.every) || s.every < 1) err('eventsLintMilitary: bad scale.every'); if (s.effect) checkEffectsAnywhere(s.effect, e.id + '#' + c.key + '#condEff' + i + '#milScale'); });
+          if (Array.isArray(cim.scale)) cim.scale.forEach(s => {
+            if (['fielded', 'missing', 'due', 'extra'].indexOf(s.by) === -1) err('eventsLintMilitary: неизвестный by=' + s.by);
+            if (typeof s.every !== 'number' || !Number.isInteger(s.every) || s.every < 1) err('eventsLintMilitary: bad scale.every');
+            ['requiresFlag', 'requiresNotFlag'].forEach(k => {
+              if(s[k] && !getSetFlagTurn(s[k], e.turn)) err('eventsLintFlags: condEff.military.scale.' + k + ' ' + s[k] + ' у ' + e.id + '/' + c.key + ' не найдена ставка ранее');
+            });
+            if (s.effect) checkEffectsAnywhere(s.effect, e.id + '#' + c.key + '#condEff' + i + '#milScale');
+          });
         }
       });
       if (e.type === 'narrative') (e.conditionalEffects || []).forEach((ce, i) => checkEffectsAnywhere(ce.effect, e.id + '#condEff' + i));

@@ -85,6 +85,7 @@ function resolveEffect(source, rod, druzhina){
     const estate = rod && rod.estate;
     const slava = rod && rod.resources ? (rod.resources.slava || 0) : 0;
     if(ce.requiresFlag && !flags[ce.requiresFlag]) return false;
+    if(ce.requiresNotFlag && flags[ce.requiresNotFlag]) return false;
     if(ce.requiresEstate && ce.requiresEstate !== estate) return false;
     if(ce.minSlava !== undefined && slava < ce.minSlava) return false;
     return true;
@@ -303,6 +304,7 @@ function findConditionalEffect(source, rod){
   const slava = rod && rod.resources ? (rod.resources.slava || 0) : 0;
   return source.conditionalEffects.find(ce => {
     if(ce.requiresFlag && !flags[ce.requiresFlag]) return false;
+    if(ce.requiresNotFlag && flags[ce.requiresNotFlag]) return false;
     if(ce.requiresEstate && ce.requiresEstate !== estate) return false;
     if(ce.minSlava !== undefined && slava < ce.minSlava) return false;
     return true;
@@ -369,11 +371,26 @@ function militaryEquipmentCost(fielded){
   return 5 * Math.max(0, fielded || 0);
 }
 
+// Военный блок варианта с учётом подходящей условной ветки: например, второстепенный
+// участок вместо почётного места меняет шкалу награды. Условная ветка заменяет scale целиком.
+function effectiveMilitary(choice, rod, resources){
+  if(!choice || !choice.military) return null;
+  const flags = Object.assign({}, (rod && rod.flags) || {});
+  (choice.setFlags || []).forEach(f => { flags[f] = true; });
+  const rodForConds = {flags, estate: rod && rod.estate, resources: resources || (rod && rod.resources)};
+  const ce = findConditionalEffect(choice, rodForConds);
+  if(!ce || !ce.military) return choice.military;
+  const out = Object.assign({}, choice.military, ce.military);
+  if(Array.isArray(ce.military.scale)) out.scale = ce.military.scale;
+  return out;
+}
+
 // Военный расчёт варианта по ресурсам на момент-click (до применения эффекта).
 function choiceMilitaryOf(choice, rod, resources){
-  if(!choice || !choice.military) return null;
+  const mil = effectiveMilitary(choice, rod, resources);
+  if(!mil) return null;
   const reductions = rod && rod.casualtyReduction ? [rod.casualtyReduction] : [];
-  return computeMilitary(resources.krestyane, choice.military, reductions);
+  return computeMilitary(resources.krestyane, mil, reductions);
 }
 
 // Сколько рублей должно быть в казне, чтобы вариант был доступен (ТЗ 23).
