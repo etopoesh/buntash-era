@@ -3,7 +3,9 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-const stateRef = db.ref('buntash-state');
+// Тестовый стенд (test.html?test=1) пишет в отдельную ветку и не трогает живую игру.
+const TEST_MODE = typeof location !== 'undefined' && new URLSearchParams(location.search).has('test');
+const stateRef = db.ref(TEST_MODE ? 'buntash-test' : 'buntash-state');
 
 async function saveState(s){
   try {
