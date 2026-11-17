@@ -549,12 +549,14 @@ function majorityOf(ev, answerOf){
   return null;
 }
 
-// Итоги игры (R13): рода по знатности (убыв.), затем душам (убыв.), затем имени (алфавит).
+// Итоги игры (R13): рода по знатности (убыв.), затем крестьянам (убыв.), затем рублям
+// (убыв.), затем имени (возр.). Новая система оценки итогов финального собора (ТЗ).
 function finalRanking(rods){
   return Object.keys(rods).sort((a, b) => {
     const ra = rods[a].resources || {}, rb = rods[b].resources || {};
     if((rb.slava || 0) !== (ra.slava || 0)) return (rb.slava || 0) - (ra.slava || 0);
     if((rb.krestyane || 0) !== (ra.krestyane || 0)) return (rb.krestyane || 0) - (ra.krestyane || 0);
+    if((rb.zoloto || 0) !== (ra.zoloto || 0)) return (rb.zoloto || 0) - (ra.zoloto || 0);
     return a < b ? -1 : (a > b ? 1 : 0);
   });
 }
@@ -568,6 +570,50 @@ function worldVerdict(national){
     boyarFreedom: nat.centralization < 5,
     unrest: nat.stability < 5
   };
+}
+
+// Новая система оценки итогов финального собора (ТЗ): рекорды родов.
+// bestBy — функция, возвращающая числовое значение статуса рода.
+function finalBestRod(rods, bestBy){
+  let bestName = null;
+  let bestVal = -Infinity;
+  Object.keys(rods || {}).forEach(n => {
+    const v = bestBy(rods[n]) || 0;
+    if(v > bestVal){ bestVal = v; bestName = n; }
+  });
+  return bestName;
+}
+
+// Число боевых холопов, отправленных в игру данным родом: максимум по военным
+// снимкам ответов (answers[].outcome.military.fielded); если снимков нет — по текущей дружине.
+function finalMaxFieldedOf(rod){
+  let mx = 0;
+  const walk = o => {
+    if(!o || typeof o !== 'object') return;
+    if(o.military && typeof o.military.fielded === 'number') mx = Math.max(mx, o.military.fielded);
+    Object.keys(o).forEach(k => { if(k === 'military') return; walk(o[k]); });
+  };
+  walk(rod ? (rod.answers || {}) : null);
+  const finalFielded = Math.floor((rod && rod.resources ? (rod.resources.krestyane || 0) : 0) / 20);
+  return Math.max(mx, finalFielded);
+}
+
+// Национальная прибавка, полученная родом: сумма по его ответам плюс национальные
+// эффекты событий (в одиночной партии они относятся к роду). Используется для статуса
+// «род, давший максимальную централизацию / стабильность».
+function finalRodNationalGain(rod, key){
+  let gain = 0;
+  Object.keys(rod.answers || {}).forEach(evId => {
+    const ans = rod.answers[evId];
+    const ev = state.events ? state.events.find(e => e.id === evId) : null;
+    const c = ev && ev.choices ? ev.choices.find(c => c.key === (ans ? ans.choiceKey : null)) : null;
+    const ne = c && c.majorityBonus ? c.majorityBonus.nationalEffect : null;
+    if(ne && typeof ne[key] === 'number') gain += ne[key];
+  });
+  if(state.events) for(const ev of state.events){
+    if(ev.type === 'narrative' && ev.nationalEffect) for(const k in ev.nationalEffect) if(k === key) gain += ev.nationalEffect[k];
+  }
+  return gain;
 }
 
 // Один раунд аукциона: чистая функция над объектом аукциона. Возвращает {auction, winnerName}.

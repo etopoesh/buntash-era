@@ -146,6 +146,13 @@ function gmScreen(){
       if(verdict.boyarFreedom) verdictLines.push('боярская вольница');
       if(verdict.unrest) verdictLines.push('смута и бунты');
       const estLblFin = {boyare:'боярский', dvoryane:'дворянский'};
+      // Новая система оценки итогов финального собора (ТЗ): рекорды отдельных родов
+      const bestPeasants = finalBestRod(state.rods, r => (r.resources || {}).krestyane);
+      const bestGold = finalBestRod(state.rods, r => (r.resources || {}).zoloto);
+      const bestBuilt = finalBestRod(state.rods, r => builtCountOf(r));
+      const bestFielded = finalBestRod(state.rods, r => finalMaxFieldedOf(r));
+      const bestCentral = finalBestRod(state.rods, r => finalRodNationalGain(r, 'centralization'));
+      const bestStability = finalBestRod(state.rods, r => finalRodNationalGain(r, 'stability'));
       finalHtml = `
         <div class="vote-tally" style="margin-top:10px;">
           <strong>Итоговый рейтинг родов</strong>
@@ -155,6 +162,17 @@ function gmScreen(){
           <strong>Держава к финалу</strong><br>
           Стабильность: ${state.national.stability} · Централизация: ${state.national.centralization}<br>
           ${verdictLines.length ? verdictLines.join(' · ') : 'Власть и вольность держат равновесие'}
+        </div>
+        <div class="vote-tally" style="margin-top:10px;">
+          <strong>Итоги по родам</strong>
+          <ol>
+            <li>Род с наибольшим количеством крестьян: <strong>${escapeHtml(bestPeasants || '—')}</strong></li>
+            <li>Род с наибольшим количеством денег: <strong>${escapeHtml(bestGold || '—')}</strong></li>
+            <li>Род, построивший максимум зданий: <strong>${escapeHtml(bestBuilt || '—')}</strong></li>
+            <li>Род, отправивший наибольшее число боевых холопов в игру: <strong>${escapeHtml(bestFielded || '—')}</strong></li>
+            <li>Род, давший максимальную централизацию: <strong>${escapeHtml(bestCentral || '—')}</strong></li>
+            <li>Род, давший максимальную стабильность: <strong>${escapeHtml(bestStability || '—')}</strong></li>
+          </ol>
         </div>`;
     }
     rightPanel = `
