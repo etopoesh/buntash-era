@@ -244,7 +244,7 @@ function rodScreen(){
     let assemblyAction;
     if(ev.final) assemblyAction = `<p class="small-note">Игра завершена</p>`;
     else if(released) assemblyAction = `<button class="choice-btn" id="btn-next-event">Далее →</button>`;
-    else assemblyAction = `<p class="small-note">Ждите указаний организатора</p>`;
+    else assemblyAction = `<p class="small-note">Ведущий рассадит вас по заслугам, а не по рангу</p>`;
     body = `
       <div class="event-card">
         <span class="type-badge global">Очный собор</span>

@@ -3,6 +3,37 @@ let gmRodsDraft = '';
 let gmRodsMsg = '';
 let gmSeatingOpen = {}; // id assembly-события → показана ли рассадка
 
+// Короткие названия ходов для шапки ведущего: полные формулировки из events.json
+// в ленте не помещаются. Ключ — id события, чтобы не зависеть от текста заголовка.
+const SHORT_TITLES = {
+  'assembly-start':'Начало', 'sobor-1':'Собор примирения', 'kazan-2':'Казань', 'soba-3':'Большая соха',
+  'sudebnik-4':'Судебник', 'gumnaya-5':'Губная реформа', 'mest-6':'Места', 'strelets-7':'Стрельцы',
+  'kazan-8':'Взятие Казани', 'bolemyatsa-9':'Болезнь царя', 'upoved-10':'Уложение о службе',
+  'astraxan-11':'Астрахань', 'angliya-12':'Англия', 'livon-13':'Полоцк', 'chashniki-14':'Чашники',
+  'korrup-15':'Коррупция', 'oprich-16':'Опричнина', 'staritsky-17':'Старицкий', 'molodi-18':'Молоди',
+  'polotsk-19':'Полоцк 1579', 'pskov-20':'Псков', 'erma-21':'Ермак', 'zapoved-22':'Заповедные лета',
+  'ign-23':'Смерть Грозного', 'uglich-24':'Углич', 'godunov-25':'Годунов',
+  'assembly-1':'Собор I', 'famine-1601':'Голод', 'hlopko-revolt-1603':'Хлопко',
+  'dobrynichi-1604':'Добрыничи', 'shuisky-trial-1605':'Суд над Шуйским', 'dmitry-wedding-1606':'Свадьба Лжедмитрия',
+  'krestotseloval-1606':'Крестоцелование', 'bolotnikov-1606':'Болотников', 'dum-33':'Лжедмитрий II',
+  'saponos-34':'Троица', 'boev-35':'Скопин-Шуйский', 'klu-36':'Клушино', 'zag-37':'Заговор',
+  'seme-38':'Семибоярщина', 'smol-39':'Смоленск', 'opol-40':'1-е ополчение', 'opol2-41':'2-е ополчение',
+  'zem-42':'Собор 1613', 'assembly-2':'Собор II', 'smol-43':'Смоленск 1613', 'pskov-44':'Псковское сидение',
+  'vladd-45':'Владислав', 'filaret-46':'Филарет', 'smol-47':'Смоленская война', 'soly-48':'Соляной бунт',
+  'zem-49':'Соборное уложение', 'dezh-50':'Дежнёв и Хабаров', 'khleb-51':'Хлебный бунт', 'nikon-52':'Никон',
+  'per-53':'Переяславль', 'shved-54':'Шведская война', 'med-55':'Медный бунт', 'big-56':'Большой собор',
+  'nov-57':'Новоторговый устав', 'razin-58':'Разин', 'turk-59':'Турция', 'itogi-60':'Итоги',
+  'assembly-final':'Финал'
+};
+
+// Три акта: от старта до первого собора, от первого до второго, от второго до финала.
+// Границы — индексы assembly-событий в events.json.
+const ACT_BOUNDS = [
+  {label:'Акт I', from:0, to:26},
+  {label:'Акт II', from:26, to:44},
+  {label:'Акт III', from:44, to:null}
+];
+
 function gmScreen(){
   const ev = state.events[state.currentIndex];
   const allRodNames = Object.keys(state.rods);
@@ -22,17 +53,26 @@ function gmScreen(){
     </tr>`;
   }).join('');
 
-  const timeline = state.events.map((e,i)=>{
-    let done;
-    if(e.type === 'normal') done = allRodNames.filter(n=>state.rods[n].answers[e.id]).length;
-    else if(e.type === 'global') done = allRodNames.filter(n=>state.rods[n].votes[e.id]).length;
-    else if(e.type === 'narrative') done = allRodNames.filter(n=>(state.rods[n].progress||0) > i).length;
-    else if(e.type === 'assembly') done = allRodNames.filter(n=>(state.rods[n].progress||0) >= i).length;
-    else if(e.type === 'auction') done = (state.auctions[e.id] && state.auctions[e.id].winner) ? allRodNames.length : (state.auctions[e.id] ? Object.keys(state.auctions[e.id].bids).length : 0);
-    return `<div class="tl-item ${i===state.currentIndex?'active':''}" data-jump="${i}">
-      <div class="tl-dot"></div>
-      <div class="tl-title">${e.title}</div>
-      <div class="tl-count">${done}/${allRodNames.length}</div>
+  const timeline = ACT_BOUNDS.map(act=>{
+    const to = act.to === null ? state.events.length : Math.min(act.to, state.events.length);
+    const rows = [];
+    for(let i = act.from; i < to; i++){
+      const e = state.events[i];
+      let done;
+      if(e.type === 'normal') done = allRodNames.filter(n=>state.rods[n].answers[e.id]).length;
+      else if(e.type === 'global') done = allRodNames.filter(n=>state.rods[n].votes[e.id]).length;
+      else if(e.type === 'narrative') done = allRodNames.filter(n=>(state.rods[n].progress||0) > i).length;
+      else if(e.type === 'assembly') done = allRodNames.filter(n=>(state.rods[n].progress||0) >= i).length;
+      else if(e.type === 'auction') done = (state.auctions[e.id] && state.auctions[e.id].winner) ? allRodNames.length : (state.auctions[e.id] ? Object.keys(state.auctions[e.id].bids).length : 0);
+      rows.push(`<div class="tl-item ${i===state.currentIndex?'active':''}" data-jump="${i}">
+        <div class="tl-dot"></div>
+        <div class="tl-title">${SHORT_TITLES[e.id] || e.title}</div>
+        <div class="tl-count">${done}/${allRodNames.length}</div>
+      </div>`);
+    }
+    return `<div class="tl-act">
+      <div class="tl-act-label">${act.label}</div>
+      <div class="tl-act-items">${rows.join('')}</div>
     </div>`;
   }).join('');
 

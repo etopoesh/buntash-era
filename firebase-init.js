@@ -17,9 +17,17 @@ async function saveState(s){
   }
 }
 
+// Версия подставляется из ?v= у тега firebase-init.js — чтобы обновления текстов
+// events.json не застревали в кэше браузера после правок описаний.
+const DATA_VERSION = (function(){
+  const src = (typeof document !== 'undefined' && document.currentScript && document.currentScript.src) || '';
+  const m = src.match(/[?&]v=([^&]+)/);
+  return m ? m[1] : '1';
+})();
+
 async function loadEvents() {
   try {
-    const response = await fetch('events.json');
+    const response = await fetch('events.json?v=' + DATA_VERSION);
     return await response.json();
   } catch (e) {
     console.error('Ошибка загрузки событий:', e);
@@ -31,7 +39,7 @@ async function loadEvents() {
 // возвращаем null: окно «Постройки» не показывается, игра идёт дальше без ошибок.
 async function loadBuildings() {
   try {
-    const response = await fetch('plus/тз22/buildings.json');
+    const response = await fetch('plus/тз22/buildings.json?v=' + DATA_VERSION);
     if (!response.ok) return null;
     return await response.json();
   } catch (e) {

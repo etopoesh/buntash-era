@@ -211,22 +211,32 @@
     background:var(--seal); color:var(--parchment); border-color:var(--seal);
   }
 
-  /* Шкала событий у ведущего */
+  /* Шкала событий у ведущего: три акта, каждая строка прокручивается отдельно */
   .timeline{
-    display:flex; gap:14px; overflow-x:auto; padding:12px 4px 16px;
+    display:flex; flex-direction:column; gap:6px; padding:8px 4px 10px;
     margin-bottom:10px;
   }
+  .tl-act{ display:flex; align-items:center; gap:10px; }
+  .tl-act-label{
+    flex:0 0 68px; text-align:right;
+    font:600 11px/1.2 'Segoe UI',Arial,sans-serif; color:var(--gold-light);
+    letter-spacing:0.04em;
+  }
+  .tl-act-items{
+    display:flex; gap:10px; flex:1 1 auto; min-width:0; overflow-x:auto;
+    padding-bottom:5px;
+  }
   .tl-item{
-    min-width:130px; text-align:center; cursor:pointer;
-    font-family:'Segoe UI',Arial,sans-serif; font-size:12px; color:var(--parchment-dark);
-    padding-bottom:6px; border-bottom:2px solid transparent;
+    flex:0 0 auto; min-width:92px; max-width:112px; text-align:center; cursor:pointer;
+    font-family:'Segoe UI',Arial,sans-serif; font-size:11px; color:var(--parchment-dark);
+    padding-bottom:5px; border-bottom:2px solid transparent;
   }
   .tl-item.active{ color:var(--gold-light); border-bottom-color:var(--gold); }
   .tl-dot{
     width:9px; height:9px; border-radius:50%; margin:0 auto 5px; background:var(--gold);
   }
   .tl-item.active .tl-dot{ background:var(--seal); }
-  .tl-title{ font-weight:600; margin-bottom:2px; }
+  .tl-title{ font-weight:600; margin-bottom:2px; line-height:1.25; }
   .tl-count{ opacity:0.75; }
   /* Слухи */
   .type-badge.rumor{background:#E4D9C4;color:var(--ink-soft);}
