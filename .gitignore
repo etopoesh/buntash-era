@@ -1,0 +1,12 @@
+# Локальные копии ТЗ и результаты разработки
+/tools/simulate-output.csv
+/plus/**/*.docx
+/plus/**/*.zip
+/plus/**/*.csv
+
+# Логи и временные файлы
+*.log
+Thumbs.db
+.DS_Store
+*.swp
+*~
