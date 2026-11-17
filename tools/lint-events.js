@@ -106,6 +106,9 @@ filtered.forEach(e => {
         if (!getSetFlagTurn(f, e.turn)) err('eventsLintFlags: requires.flags ' + f + ' у ' + e.id + '/' + c.key + ' не найдена ставка ранее (turn < ' + e.turn + ')');
       });
     }
+    ['requiresFlag', 'requiresNotFlag'].forEach(k => {
+      if (c[k] && !getSetFlagTurn(c[k], e.turn)) err('eventsLintFlags: ' + k + ' ' + c[k] + ' у ' + e.id + '/' + c.key + ' не найдена ставка ранее (turn < ' + e.turn + ')');
+    });
   });
 });
 
@@ -144,7 +147,7 @@ filtered.forEach(e => {
 });
 
 // ---- 6. В effect только известные ключи, целые числа, дробные только в военных снижениях ----
-const EFFECT_KEYS = ['slava', 'krestyane', 'zoloto', 'bribe', 'income', 'incomeEnd', 'casualtyReduction'];
+const EFFECT_KEYS = ['slava', 'krestyane', 'zoloto', 'krestyanePercent', 'zolotoPerKrestyaneLost', 'bribe', 'income', 'incomeEnd', 'casualtyReduction'];
 const checkEffectKeys = (eff, ctx) => {
   if (!eff || typeof eff !== 'object') return;
   Object.keys(eff).forEach(k => {
@@ -185,6 +188,9 @@ filtered.forEach(e => {
         ['requiresFlag', 'requiresNotFlag'].forEach(k => {
           if(ce[k] && !getSetFlagTurn(ce[k], e.turn)) err('eventsLintFlags: conditionalEffects.' + k + ' ' + ce[k] + ' у ' + e.id + '/' + c.key + ' не найдена ставка ранее');
         });
+        (ce.requiresNoneOf || []).forEach(f => {
+          if(!getSetFlagTurn(f, e.turn)) err('eventsLintFlags: conditionalEffects.requiresNoneOf ' + f + ' у ' + e.id + '/' + c.key + ' не найдена ставка ранее');
+        });
         checkEffectsAnywhere(ce.effect, e.id + '#' + c.key + '#condEff' + i);
         checkEffectsAnywhere(ce.nationalEffect, e.id + '#' + c.key + '#condEff' + i + '#national');
         const cim = ce.military;
@@ -201,7 +207,15 @@ filtered.forEach(e => {
           });
         }
       });
-      if (e.type === 'narrative') (e.conditionalEffects || []).forEach((ce, i) => checkEffectsAnywhere(ce.effect, e.id + '#condEff' + i));
+      if (e.type === 'narrative') (e.conditionalEffects || []).forEach((ce, i) => {
+        ['requiresFlag', 'requiresNotFlag'].forEach(k => {
+          if(ce[k] && !getSetFlagTurn(ce[k], e.turn)) err('eventsLintFlags: narrative conditionalEffects.' + k + ' ' + ce[k] + ' у ' + e.id + ' не найдена ставка ранее');
+        });
+        (ce.requiresNoneOf || []).forEach(f => {
+          if(!getSetFlagTurn(f, e.turn)) err('eventsLintFlags: narrative conditionalEffects.requiresNoneOf ' + f + ' у ' + e.id + ' не найдена ставка ранее');
+        });
+        checkEffectsAnywhere(ce.effect, e.id + '#condEff' + i);
+      });
     });
   }
   checkEffectsAnywhere(e.effect, e.id);

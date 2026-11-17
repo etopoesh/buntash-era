@@ -28,7 +28,8 @@ function loadRules(file){
     '\n;globalThis.__rules = {applyEffect, resolveEffect, computeEconomyTick, applyEconomyTick, pendingMilestones, SLAVA_MILESTONES,' +
     ' defaultResources, druzhinaOf, findConditionalEffect, getArrivalBonuses, arrivalBonusKey, initialState,' +
     ' majorityOf, bribeCost, computeMilitary, activeIncomeMods, finalRanking, worldVerdict, roundHalfUp, fmtDelta, resourceEffect,' +
-     ' militaryEquipmentCost, choiceMoneyCost, minChoiceMoneyCost, choiceMilitaryOf, effectiveMilitary, actOfIndex};';
+     ' militaryEquipmentCost, choiceMoneyCost, minChoiceMoneyCost, choiceMilitaryOf, effectiveMilitary, actOfIndex,' +
+     ' matchingConditionals, conditionalCasualtyReduction, casualtyReductionsOf, incomeSpecsOf, choiceAvailable};';
   const sandbox = {};
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox, {filename: file});
@@ -90,7 +91,7 @@ function runOne(strategyName, estate, seedForRun){
       // Военный расчёт по выбранным ресурсам (R9): шкала «+1 за каждого выставленного» + потери
       const milSpec = R.effectiveMilitary(choice, {flags, estate}, res0);
       if(milSpec){
-        const m = R.computeMilitary(res0.krestyane, milSpec, rod.casualtyReduction ? [rod.casualtyReduction] : []);
+        const m = R.computeMilitary(res0.krestyane, milSpec, R.casualtyReductionsOf(choice, {flags, estate, resources: res0, casualtyReduction: rod.casualtyReduction}, res0));
         for(const k in m.scaleEffect) eff[k] = (eff[k] || 0) + m.scaleEffect[k];
         if(m.lost) eff.krestyane = (eff.krestyane || 0) - m.lost;
         // Снаряжение платим со второго хода; на первом ходе расхода нет.
@@ -122,7 +123,7 @@ function runOne(strategyName, estate, seedForRun){
       const eff = R.resolveEffect(ev, rod);
       const branch = R.findConditionalEffect(ev, rod);
       if(branch && branch.military){
-        const m = R.computeMilitary(rod.resources.krestyane, branch.military, rod.casualtyReduction ? [rod.casualtyReduction] : []);
+        const m = R.computeMilitary(rod.resources.krestyane, branch.military, R.casualtyReductionsOf(ev, rod, rod.resources));
         for(const k in m.scaleEffect) eff[k] = (eff[k] || 0) + m.scaleEffect[k];
         if(m.lost) eff.krestyane = (eff.krestyane || 0) - m.lost;
       }
@@ -130,7 +131,7 @@ function runOne(strategyName, estate, seedForRun){
       // Национальные показатели в narrative-событиях: прибавка (nationalEffect)
       if(ev.nationalEffect) for(const k in ev.nationalEffect) national[k] = (national[k] || 0) + ev.nationalEffect[k];
     } else {
-      const estateOk = ev.choices.filter(c => !c.requiresEstate || c.requiresEstate === estate);
+      const estateOk = ev.choices.filter(c => R.choiceAvailable(c, rod));
       // ТЗ 23: недоступные по деньгам варианты не выбираются; если все недоступны — оставляем как есть.
       const minCost = R.minChoiceMoneyCost(ev.choices, rod, rod.resources, ev.turn);
       const affordable = estateOk.filter(c => {

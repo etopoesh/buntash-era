@@ -66,32 +66,92 @@ function fmtNationalDelta(effect){
   return parts.join(' &nbsp; ');
 }
 
-// Итоговый эффект источника (narrative-события или выбора) для конкретного рода:
-// общий effect + effectByEstate[rod.estate] + первый подходящий условный эффект.
-// Значения по одинаковым ключам суммируются (R10). Спецключи отфильтрованы.
-function resolveEffect(source, rod, druzhina){
-  const out = {};
-  const add = eff => { const re = resourceEffect(eff); for(const k in re){ out[k] = (out[k] || 0) + re[k]; } };
-  add(source && source.effect);
-  add(source && source.effectByEstate && rod && source.effectByEstate[rod.estate]);
+// Все подходящие conditionalEffects источника. Условия: requiresFlag / requiresNotFlag,
+// requiresEstate, minSlava / maxSlava. Один и тот же список используют и ресурсные эффекты,
+// и спецключи (casualtyReduction, income) — чтобы правила не дублировались.
+function matchingConditionals(source, rod, druzhina){
+  if(!source || !source.conditionalEffects) return [];
+  const flags = (rod && rod.flags) || {};
+  const estate = rod && rod.estate;
+  const slava = rod && rod.resources ? (rod.resources.slava || 0) : 0;
+  return source.conditionalEffects.filter(ce => {
+    if(ce.requiresFlag && !flags[ce.requiresFlag]) return false;
+    if(ce.requiresNotFlag && flags[ce.requiresNotFlag]) return false;
+    if(Array.isArray(ce.requiresNoneOf) && ce.requiresNoneOf.some(f => flags[f])) return false;
+    if(ce.requiresEstate && ce.requiresEstate !== estate) return false;
+    if(ce.minSlava !== undefined && slava < ce.minSlava) return false;
+    if(ce.maxSlava !== undefined && slava > ce.maxSlava) return false;
+    return true;
+  });
+}
+
+// Все части эффекта источника: общий, сословный, ступень дружины, условные ветки.
+function effectParts(source, rod, druzhina){
+  const parts = [source && source.effect];
+  const estateObj = source && source.effectByEstate && rod && source.effectByEstate[rod.estate];
+  parts.push(estateObj);
   // Ступень дружины: берётся дружина на момент выбора (druzhina), а если не передана — текущая по крестьянам рода
   if(source && source.druzhinaTiers && rod){
     const tier = findDruzhinaTier(source, druzhina === undefined ? druzhinaOf(rod.resources) : druzhina);
-    if(tier) add(tier.effect);
+    if(tier) parts.push(tier.effect);
   }
-  // Условные добавки (ТЗ 21 S1): применяются все подходящие записи; текст берётся из первой подходящей.
-  const ces = source && source.conditionalEffects ? source.conditionalEffects.filter(ce => {
-    const flags = (rod && rod.flags) || {};
-    const estate = rod && rod.estate;
-    const slava = rod && rod.resources ? (rod.resources.slava || 0) : 0;
-    if(ce.requiresFlag && !flags[ce.requiresFlag]) return false;
-    if(ce.requiresNotFlag && flags[ce.requiresNotFlag]) return false;
-    if(ce.requiresEstate && ce.requiresEstate !== estate) return false;
-    if(ce.minSlava !== undefined && slava < ce.minSlava) return false;
-    return true;
-  }) : [];
-  ces.forEach(ce => add(ce.effect));
+  matchingConditionals(source, rod, druzhina).forEach(ce => parts.push(ce.effect));
+  return parts;
+}
+
+// Итоговый эффект источника (narrative-события или выбора) для конкретного рода:
+// общий effect + effectByEstate[rod.estate] + все подходящие условные эффекты.
+// Значения по одинаковым ключам суммируются (R10). Спецключи отфильтрованы.
+// krestyanePercent и zolotoPerKrestyaneLost — процентные статьи: переводятся в
+// абсолютные числа по душам на момент выбора, чтобы игрок и движок видели одно и то же.
+function resolveEffect(source, rod, druzhina){
+  const out = {};
+  let krestyanePct = 0, perLost = 0;
+  effectParts(source, rod, druzhina).forEach(eff => {
+    if(!eff) return;
+    const re = resourceEffect(eff);
+    for(const k in re){ out[k] = (out[k] || 0) + re[k]; }
+    if(typeof eff.krestyanePercent === 'number') krestyanePct += eff.krestyanePercent;
+    if(typeof eff.zolotoPerKrestyaneLost === 'number') perLost += eff.zolotoPerKrestyaneLost;
+  });
+  if(krestyanePct){
+    const before = rod && rod.resources ? (rod.resources.krestyane || 0) : 0;
+    const delta = roundHalfUp(before * krestyanePct / 100);
+    out.krestyane = (out.krestyane || 0) + delta;
+    if(perLost) out.zoloto = (out.zoloto || 0) + Math.abs(delta) * perLost;
+  }
   return out;
+}
+
+// Снижение потерь, заданное подходящими conditionalEffects этого же хода (не сохраняется надолго).
+// Плюс к уже накопленному rod.casualtyReduction от прошлых выборов.
+function conditionalCasualtyReduction(source, rod, druzhina){
+  return matchingConditionals(source, rod, druzhina).reduce((sum, ce) => {
+    const v = ce.effect && ce.effect.casualtyReduction !== undefined ? ce.effect.casualtyReduction : ce.casualtyReduction;
+    return typeof v === 'number' ? sum + v : sum;
+  }, 0);
+}
+function casualtyReductionsOf(source, rod, resources){
+  const out = [];
+  if(rod && typeof rod.casualtyReduction === 'number' && rod.casualtyReduction) out.push(rod.casualtyReduction);
+  const cond = conditionalCasualtyReduction(source, rod, resources === undefined ? rod && rod.resources : resources);
+  if(cond) out.push(cond);
+  return out;
+}
+
+// Все прибавки к доходу источника: общая, сословная и условные. Разные ключи не перезаписывают
+// друг друга — например, доход от торговли и бонус участникам Астраханского похода действуют вместе.
+function incomeSpecsOf(source, rod, druzhina){
+  const specs = [];
+  const push = inc => { if(inc && inc.key && typeof inc.amount === 'number') specs.push(inc); };
+  push(source && source.effect && source.effect.income);
+  const estateObj = source && source.effectByEstate && rod && source.effectByEstate[rod.estate];
+  push(estateObj && estateObj.income);
+  matchingConditionals(source, rod, druzhina).forEach(ce => {
+    const inc = ce.effect && ce.effect.income ? ce.effect.income : ce.income;
+    push(inc);
+  });
+  return specs;
 }
 
 // Дружина рода: одна единица на каждые 20 крестьян, с округлением вниз.
@@ -295,7 +355,7 @@ function pendingMilestones(rod, slava){
 
 // Первый подходящий элемент conditionalEffects (у выбора или события). Условия:
 // requiresFlag — флаг стоит у рода; requiresEstate — совпадает сословие рода;
-// minSlava — знатность рода не ниже порога (проверяется по ресурсам на момент вызова).
+// minSlava / maxSlava — знатность не ниже / не выше порога (по ресурсам на момент вызова).
 // Элемент без условий подходит всегда (ветка «по умолчанию») — в данных ставить её последней.
 function findConditionalEffect(source, rod){
   if (!source || !source.conditionalEffects) return null;
@@ -305,10 +365,22 @@ function findConditionalEffect(source, rod){
   return source.conditionalEffects.find(ce => {
     if(ce.requiresFlag && !flags[ce.requiresFlag]) return false;
     if(ce.requiresNotFlag && flags[ce.requiresNotFlag]) return false;
+    if(Array.isArray(ce.requiresNoneOf) && ce.requiresNoneOf.some(f => flags[f])) return false;
     if(ce.requiresEstate && ce.requiresEstate !== estate) return false;
     if(ce.minSlava !== undefined && slava < ce.minSlava) return false;
+    if(ce.maxSlava !== undefined && slava > ce.maxSlava) return false;
     return true;
   }) || null;
+}
+
+// Доступность варианта выбора по сословию и флагам (одна проверка для всех экранов и правил).
+function choiceAvailable(choice, rod){
+  if(!choice) return false;
+  const flags = (rod && rod.flags) || {};
+  if(choice.requiresEstate && (!rod || choice.requiresEstate !== rod.estate)) return false;
+  if(choice.requiresFlag && !flags[choice.requiresFlag]) return false;
+  if(choice.requiresNotFlag && flags[choice.requiresNotFlag]) return false;
+  return true;
 }
 
 // Предохранитель: приводит объект аукциона к полной форме (используется и в render(), и в boot())
@@ -389,8 +461,7 @@ function effectiveMilitary(choice, rod, resources){
 function choiceMilitaryOf(choice, rod, resources){
   const mil = effectiveMilitary(choice, rod, resources);
   if(!mil) return null;
-  const reductions = rod && rod.casualtyReduction ? [rod.casualtyReduction] : [];
-  return computeMilitary(resources.krestyane, mil, reductions);
+  return computeMilitary(resources.krestyane, mil, casualtyReductionsOf(choice, rod, resources));
 }
 
 // Сколько рублей должно быть в казне, чтобы вариант был доступен (ТЗ 23).
@@ -417,7 +488,7 @@ function choiceMoneyCost(choice, rod, resources, turn){
 // Самая дешёвая статья среди доступных роду вариантов. При отрицательном балансе
 // разрешаем выбрать только её — игрок уходит в долг, но игра не встаёт.
 function minChoiceMoneyCost(choices, rod, resources, turn){
-  const list = (choices || []).filter(c => !c.requiresEstate || c.requiresEstate === rod.estate);
+  const list = (choices || []).filter(c => choiceAvailable(c, rod));
   if(!list.length) return 0;
   return Math.min.apply(null, list.map(c => choiceMoneyCost(c, rod, resources, turn)));
 }

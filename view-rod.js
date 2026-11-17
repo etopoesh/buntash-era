@@ -290,7 +290,7 @@ function rodScreen(){
     const branch = findConditionalEffect(ev, rod);
     const eff = resolveEffect(ev, rod); // общий + сословие + условная ветка (опричники/земцы на ходе 17)
     // Военная ветка (опричники на ходе 17): расчёт по душам на момент показа, с накопленными снижениями потерь
-    const mil = branch && branch.military ? computeMilitary(rod.resources.krestyane, branch.military, rod.casualtyReduction ? [rod.casualtyReduction] : []) : null;
+    const mil = branch && branch.military ? computeMilitary(rod.resources.krestyane, branch.military, casualtyReductionsOf(ev, rod, rod.resources)) : null;
     const effShown = Object.assign({}, eff);
     const narrEquipmentCost = mil ? militaryEquipmentCost(mil.fielded) : 0;
     if(mil){
@@ -363,7 +363,7 @@ function rodScreen(){
     const typeLabel = ev.type === 'normal' ? 'Обычное событие' : 'Глобальное событие';
     const typeClass = ev.type === 'normal' ? 'normal' : 'global';
     if(!answered){
-      const availableChoices = ev.choices.filter(c=>!c.requiresEstate || c.requiresEstate === rod.estate);
+      const availableChoices = ev.choices.filter(c=>choiceAvailable(c, rod));
       body = `
         <div class="event-card">
           <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
@@ -845,16 +845,17 @@ function bindRodScreen(){
       const eff = choice.effect || {};
       // Сословный эффект — плоский объект: {slava/krestyane/zoloto, text?, income?} (см. vec estateMerge)
       const estateObj = choice.effectByEstate && choice.effectByEstate[rod.estate];
-      // Прибавка к доходу может быть общей (effect.income) или сословной (effectByEstate[сословие].income)
-      const incSpec = eff.income || (estateObj && estateObj.income) || null;
       // Посул: от знатности до выбора (R7)
       const bribePaid = eff.bribe !== undefined ? bribeCost(eff.bribe, res0.slava) : 0;
       // Флаги, которые ставит выбор, — сразу видны условным эффектам и условной шкале награды
       const flagsAfter = Object.assign({}, rod.flags);
       (choice.setFlags || []).forEach(flag => { flagsAfter[flag] = true; });
       const rodForConds = {flags: flagsAfter, estate: rod.estate, resources: res0};
+      // Доход: общий, сословный или условный доход этого хода.
+      const incSpecs = incomeSpecsOf(choice, rodForConds, druzhina);
+      const incSpec = incSpecs[0] || null;
       // Военный расчёт (R9): от душ до выбора, со снижениями потерь и условной шкалой награды
-      const reductions = rod.casualtyReduction ? [rod.casualtyReduction] : [];
+      const reductions = casualtyReductionsOf(choice, rodForConds, res0);
       const milSpec = effectiveMilitary(choice, rodForConds, res0);
       const mil = milSpec ? computeMilitary(res0.krestyane, milSpec, reductions) : null;
       // ТЗ 23: 5 рублей за каждого выставленного холопа, но только со второго хода.
@@ -895,7 +896,7 @@ function bindRodScreen(){
         // Все эффекты применяются один раз; пол душ — внутри applyEffect (R8)
         await txResources(rodName, res => applyEffect(res, combined));
         // Постоянная прибавка к доходу / отмена (R6): одинаковый ключ перезаписывает, отмена убирает сразу
-        if(incSpec) await dbSet(`rods/${rodName}/incomeMods/${incSpec.key}`, {amount: incSpec.amount, ...(incSpec.until !== undefined ? {until: incSpec.until} : {})});
+        for(const inc of incSpecs) await dbSet(`rods/${rodName}/incomeMods/${inc.key}`, {amount: inc.amount, ...(inc.until !== undefined ? {until: inc.until} : {})});
         if(eff.incomeEnd){
           const ends = Array.isArray(eff.incomeEnd) ? eff.incomeEnd : [eff.incomeEnd];
           for(const k of ends) await dbSet(`rods/${rodName}/incomeMods/${k}`, null);
@@ -982,6 +983,10 @@ function bindRodScreen(){
             const ends = Array.isArray(ev.incomeEnd) ? ev.incomeEnd : [ev.incomeEnd];
             for(const k of ends) await dbSet(`rods/${rodName}/incomeMods/${k}`, null);
           }
+          // Условный доход narrative-события (например, штраф после отмены опричнины).
+          if(isNarrative){
+            for(const narrIncome of incomeSpecsOf(ev, rod)) await dbSet(`rods/${rodName}/incomeMods/${narrIncome.key}`, {amount: narrIncome.amount, ...(narrIncome.until !== undefined ? {until: narrIncome.until} : {})});
+          }
           // 1) эффект narrative-события, 2) тик экономики хода ev.turn — одной транзакцией по актуальным ресурсам.
           // Прибавки к доходу берутся из локальной копии без отменённых ключей, чтобы тик этого хода их уже не считал.
           const applied = await txResources(rodName, res => {
@@ -995,7 +1000,7 @@ function bindRodScreen(){
               // Военная ветка narrative-события (опричники на ходе 17): расчёт по душам на момент применения (R9)
               const branch = findConditionalEffect(ev, rod);
               if(branch && branch.military){
-                const mil = computeMilitary(res.krestyane, branch.military, rod.casualtyReduction ? [rod.casualtyReduction] : []);
+                const mil = computeMilitary(res.krestyane, branch.military, casualtyReductionsOf(ev, rod, res));
                 for(const k in mil.scaleEffect) eff[k] = (eff[k] || 0) + mil.scaleEffect[k];
                 if(mil.lost) eff.krestyane = (eff.krestyane || 0) - mil.lost;
                 const equipmentCost = militaryEquipmentCost(mil.fielded);

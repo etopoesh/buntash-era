@@ -45,7 +45,10 @@
           }
         },
         "outcomeTitle": "Мировая заключена",
-        "outcomeText": "Соседи приняли мировую. Царь ставит в пример тех, кто первым откликнулся на его призыв."
+        "outcomeText": "Соседи приняли мировую. Царь ставит в пример тех, кто первым откликнулся на его призыв.",
+        "setFlags": [
+          "sobor-peace"
+        ]
       },
       {
         "key": "sobor-1-2",
@@ -63,7 +66,10 @@
           }
         },
         "outcomeTitle": "Тяжба тянется",
-        "outcomeText": "Дело затянулось. Пока судьи разбираются, луг и крестьяне остаются за вами."
+        "outcomeText": "Дело затянулось. Пока судьи разбираются, луг и крестьяне остаются за вами.",
+        "setFlags": [
+          "sobor-refused"
+        ]
       },
       {
         "key": "sobor-1-3",
@@ -84,7 +90,10 @@
           }
         },
         "outcomeTitle": "Мировая и новая должность",
-        "outcomeText": "Соседи приняли мировую, а ваш родственник служит в Челобитной избе: он больше не может возглавлять отряды."
+        "outcomeText": "Соседи приняли мировую, а ваш родственник служит в Челобитной избе: он больше не может возглавлять отряды.",
+        "setFlags": [
+          "chelobitka-relative"
+        ]
       }
     ]
   },
@@ -120,7 +129,10 @@
               }
             }
           ]
-        }
+        },
+        "setFlags": [
+          "kazan-road"
+        ]
       },
       {
         "key": "kazan-2-2",
@@ -245,7 +257,10 @@
             },
             "text": "Часть доброй земли записана худой: доходы рода выросли."
           }
-        }
+        },
+        "setFlags": [
+          "sokha-bribe"
+        ]
       },
       {
         "key": "soba-3-3",
@@ -311,7 +326,28 @@
             },
             "text": "Кормленщики лишились бесконтрольного суда: доходы боярского рода снизились."
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "sobor-refused",
+            "effect": {
+              "krestyane": -20,
+              "zoloto": -100,
+              "slava": -2
+            },
+            "text": "Тяжба, начатая в первом ходе, проиграна: род теряет 20 душ, 100 рублей и 2 знатности."
+          },
+          {
+            "requiresFlag": "sobor-peace",
+            "effect": {},
+            "text": "Мир, заключённый в первом ходе, оградил род от жалоб: соседи не предъявили исков."
+          },
+          {
+            "requiresFlag": "chelobitka-relative",
+            "effect": {},
+            "text": "Родственник из Челобитной избы заранее узнал статьи Судебника: род обошёлся без потерь."
+          }
+        ]
       },
       {
         "key": "sudebnik-4-2",
@@ -335,7 +371,28 @@
             },
             "text": "Кормленщики лишились бесконтрольного суда: доходы боярского рода снизились."
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "sobor-refused",
+            "effect": {
+              "krestyane": -20,
+              "zoloto": -100,
+              "slava": -2
+            },
+            "text": "Тяжба, начатая в первом ходе, проиграна: род теряет 20 душ, 100 рублей и 2 знатности."
+          },
+          {
+            "requiresFlag": "sobor-peace",
+            "effect": {},
+            "text": "Мир, заключённый в первом ходе, оградил род от жалоб: соседи не предъявили исков."
+          },
+          {
+            "requiresFlag": "chelobitka-relative",
+            "effect": {},
+            "text": "Родственник из Челобитной избы заранее узнал статьи Судебника: род обошёлся без потерь."
+          }
+        ]
       },
       {
         "key": "sudebnik-4-3",
@@ -356,7 +413,31 @@
             },
             "text": "Кормленщики лишились бесконтрольного суда: доходы боярского рода снизились."
           }
-        }
+        },
+        "setFlags": [
+          "sudebnik-force"
+        ],
+        "conditionalEffects": [
+          {
+            "requiresFlag": "sobor-refused",
+            "effect": {
+              "krestyane": -20,
+              "zoloto": -100,
+              "slava": -2
+            },
+            "text": "Тяжба, начатая в первом ходе, проиграна: род теряет 20 душ, 100 рублей и 2 знатности."
+          },
+          {
+            "requiresFlag": "sobor-peace",
+            "effect": {},
+            "text": "Мир, заключённый в первом ходе, оградил род от жалоб: соседи не предъявили исков."
+          },
+          {
+            "requiresFlag": "chelobitka-relative",
+            "effect": {},
+            "text": "Родственник из Челобитной избы заранее узнал статьи Судебника: род обошёлся без потерь."
+          }
+        ]
       }
     ],
     "turn": 4
@@ -389,7 +470,11 @@
             "slava": 1,
             "text": "Род записан в губном деле: честь рода подкреплена."
           }
-        }
+        },
+        "setFlags": [
+          "guba-supported",
+          "guba-relative"
+        ]
       },
       {
         "key": "gumnaya-5-2",
@@ -402,7 +487,10 @@
             "centralization": 1,
             "stability": 1
           }
-        }
+        },
+        "setFlags": [
+          "guba-supported"
+        ]
       },
       {
         "key": "gumnaya-5-3",
@@ -457,7 +545,20 @@
             "slava": 2,
             "text": "Служебные назначения теперь больше зависят от заслуг, чем от родословной: ваш род прибавил чести."
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "sudebnik-force",
+            "requiresNotFlag": "chelobitka-relative",
+            "effect": {
+              "krestyane": -40
+            },
+            "text": "Крестьяне, удержанные силой после Судебника, бежали: род лишился 40 душ."
+          }
+        ],
+        "setFlags": [
+          "mest-obeyed"
+        ]
       },
       {
         "key": "mest-6-2",
@@ -489,6 +590,14 @@
               "slava": 8
             },
             "text": "Древность вашего рода подтверждена: назначение изменено, государь прибавил вам чести."
+          },
+          {
+            "requiresFlag": "sudebnik-force",
+            "requiresNotFlag": "chelobitka-relative",
+            "effect": {
+              "krestyane": -40
+            },
+            "text": "Крестьяне, удержанные силой после Судебника, бежали: род лишился 40 душ."
           }
         ]
       },
@@ -505,7 +614,20 @@
           "nationalEffect": {
             "centralization": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "sudebnik-force",
+            "requiresNotFlag": "chelobitka-relative",
+            "effect": {
+              "krestyane": -40
+            },
+            "text": "Крестьяне, удержанные силой после Судебника, бежали: род лишился 40 душ."
+          }
+        ],
+        "setFlags": [
+          "mest-bribed"
+        ]
       }
     ],
     "turn": 6
@@ -543,7 +665,10 @@
             "slava": 1,
             "text": "Служба для «худородных» не слишком почётна, но род отмечен государем."
           }
-        }
+        },
+        "setFlags": [
+          "strelets-relative"
+        ]
       },
       {
         "key": "strelets-7-2",
@@ -569,7 +694,10 @@
               }
             }
           ]
-        }
+        },
+        "setFlags": [
+          "firearms"
+        ]
       },
       {
         "key": "strelets-7-3",
@@ -581,7 +709,10 @@
           "nationalEffect": {
             "centralization": -1
           }
-        }
+        },
+        "setFlags": [
+          "no-firearms"
+        ]
       }
     ],
     "turn": 7
@@ -620,7 +751,51 @@
               }
             }
           ]
-        }
+        },
+        "setFlags": [
+          "kazan-siege"
+        ],
+        "conditionalEffects": [
+          {
+            "requiresFlag": "kazan-road",
+            "effect": {
+              "casualtyReduction": 0.25
+            },
+            "text": "Знание дороги к Казани (ход 2) снизило потери отряда на четверть."
+          },
+          {
+            "requiresFlag": "mest-obeyed",
+            "effect": {
+              "casualtyReduction": 0.25
+            },
+            "text": "Послушание приговору о местах (ход 6) снизило потери на четверть."
+          },
+          {
+            "requiresFlag": "no-firearms",
+            "effect": {
+              "casualtyReduction": -0.25
+            },
+            "text": "Отказ от пищалей (ход 7) увеличил потери при штурме на четверть."
+          },
+          {
+            "requiresFlag": "mest-bribed",
+            "effect": {
+              "slava": 3
+            },
+            "text": "Дьяки, подкупленные в ходе 6, записали ваш отряд первым: +3 знатности."
+          },
+          {
+            "requiresFlag": "guba-supported",
+            "requiresEstate": "dvoryane",
+            "effect": {
+              "income": {
+                "key": "guba-bonus",
+                "amount": 40
+              }
+            },
+            "text": "Губная реформа (ход 5) дала дворянскому роду постоянный доход +40 рублей."
+          }
+        ]
       },
       {
         "key": "kazan-8-2",
@@ -649,7 +824,58 @@
               }
             }
           ]
-        }
+        },
+        "setFlags": [
+          "kazan-assault"
+        ],
+        "conditionalEffects": [
+          {
+            "requiresFlag": "kazan-road",
+            "effect": {
+              "casualtyReduction": 0.25
+            },
+            "text": "Знание дороги к Казани (ход 2) снизило потери отряда на четверть."
+          },
+          {
+            "requiresFlag": "mest-obeyed",
+            "effect": {
+              "casualtyReduction": 0.25
+            },
+            "text": "Послушание приговору о местах (ход 6) снизило потери на четверть."
+          },
+          {
+            "requiresFlag": "no-firearms",
+            "effect": {
+              "casualtyReduction": -0.25
+            },
+            "text": "Отказ от пищалей (ход 7) увеличил потери при штурме на четверть."
+          },
+          {
+            "requiresFlag": "mest-bribed",
+            "effect": {
+              "slava": 3
+            },
+            "text": "Дьяки, подкупленные в ходе 6, записали ваш отряд первым: +3 знатности."
+          },
+          {
+            "requiresFlag": "strelets-relative",
+            "effect": {
+              "slava": 5
+            },
+            "text": "Стрелецкий голова из вашего рода отличился при штурме: +5 знатности."
+          },
+          {
+            "requiresFlag": "guba-supported",
+            "requiresEstate": "dvoryane",
+            "effect": {
+              "income": {
+                "key": "guba-bonus",
+                "amount": 40
+              }
+            },
+            "text": "Губная реформа (ход 5) дала дворянскому роду постоянный доход +40 рублей."
+          }
+        ]
       },
       {
         "key": "kazan-8-3",
@@ -676,7 +902,20 @@
             }
           ],
           "lossFixed": 1
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "guba-supported",
+            "requiresEstate": "dvoryane",
+            "effect": {
+              "income": {
+                "key": "guba-bonus",
+                "amount": 40
+              }
+            },
+            "text": "Губная реформа (ход 5) дала дворянскому роду постоянный доход +40 рублей."
+          }
+        ]
       },
       {
         "key": "kazan-8-4",
@@ -702,7 +941,20 @@
               }
             }
           ]
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "guba-supported",
+            "requiresEstate": "dvoryane",
+            "effect": {
+              "income": {
+                "key": "guba-bonus",
+                "amount": 40
+              }
+            },
+            "text": "Губная реформа (ход 5) дала дворянскому роду постоянный доход +40 рублей."
+          }
+        ]
       }
     ],
     "turn": 8
@@ -727,7 +979,10 @@
           "nationalEffect": {
             "centralization": 2
           }
-        }
+        },
+        "setFlags": [
+          "oath-dmitry"
+        ]
       },
       {
         "key": "bolemyatsa-9-2",
@@ -743,7 +998,10 @@
             "centralization": -2,
             "stability": -1
           }
-        }
+        },
+        "setFlags": [
+          "oath-staritsky"
+        ]
       },
       {
         "key": "bolemyatsa-9-3",
@@ -757,7 +1015,24 @@
           "nationalEffect": {
             "centralization": 1
           }
-        }
+        },
+        "setFlags": [
+          "oath-dmitry",
+          "oath-secret"
+        ],
+        "conditionalEffects": [
+          {
+            "requiresNoneOf": [
+              "chelobitka-relative",
+              "guba-relative",
+              "strelets-relative"
+            ],
+            "effect": {
+              "slava": -8
+            },
+            "text": "Тайные переговоры со Старицким раскрылись: у рода не было человека на государевой должности, родственник сослан, знатность −8."
+          }
+        ]
       }
     ],
     "turn": 9
@@ -782,7 +1057,56 @@
           "nationalEffect": {
             "centralization": 1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "sokha-bribe",
+            "effect": {
+              "zoloto": -150,
+              "slava": -3
+            },
+            "text": "Ревизия писцовых книг: подкуп писца (ход 3) раскрыт — −150 рублей, −3 знатности."
+          },
+          {
+            "requiresFlag": "kazan-siege",
+            "effect": {
+              "krestyane": 40
+            },
+            "text": "Поместья в Казанской земле за осаду (ход 8): +40 душ."
+          },
+          {
+            "requiresFlag": "kazan-assault",
+            "effect": {
+              "krestyane": 80
+            },
+            "text": "Поместья в Казанской земле за штурм (ход 8): +80 душ."
+          },
+          {
+            "requiresFlag": "oath-dmitry",
+            "effect": {
+              "krestyane": 40
+            },
+            "text": "Верность царевичу Дмитрию (ход 9): +40 душ."
+          },
+          {
+            "requiresFlag": "oath-staritsky",
+            "effect": {
+              "krestyane": -40
+            },
+            "text": "Сторонник Старицкого (ход 9): −40 душ, в наградах отказано."
+          },
+          {
+            "requiresFlag": "guba-supported",
+            "requiresEstate": "dvoryane",
+            "effect": {
+              "income": {
+                "key": "guba-bonus",
+                "amount": 40
+              }
+            },
+            "text": "Губная реформа (ход 5) дала дворянскому роду +40 рублей к доходу."
+          }
+        ]
       },
       {
         "key": "upoved-10-2",
@@ -805,13 +1129,69 @@
               "by": "extra",
               "every": 1,
               "effect": {
-                "krestyane": -1,
                 "zoloto": 10,
                 "slava": 1
               }
             }
-          ]
-        }
+          ],
+          "casualties": 0
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "sokha-bribe",
+            "effect": {
+              "zoloto": -150,
+              "slava": -3
+            },
+            "text": "Ревизия писцовых книг: подкуп писца (ход 3) раскрыт — −150 рублей, −3 знатности."
+          },
+          {
+            "requiresFlag": "kazan-siege",
+            "effect": {
+              "krestyane": 40
+            },
+            "text": "Поместья в Казанской земле за осаду (ход 8): +40 душ."
+          },
+          {
+            "requiresFlag": "kazan-assault",
+            "effect": {
+              "krestyane": 80
+            },
+            "text": "Поместья в Казанской земле за штурм (ход 8): +80 душ."
+          },
+          {
+            "requiresFlag": "oath-dmitry",
+            "effect": {
+              "krestyane": 40
+            },
+            "text": "Верность царевичу Дмитрию (ход 9): +40 душ."
+          },
+          {
+            "requiresFlag": "oath-staritsky",
+            "effect": {
+              "krestyane": -40
+            },
+            "text": "Сторонник Старицкого (ход 9): −40 душ, в наградах отказано."
+          },
+          {
+            "requiresFlag": "guba-supported",
+            "requiresEstate": "dvoryane",
+            "effect": {
+              "income": {
+                "key": "guba-bonus",
+                "amount": 40
+              }
+            },
+            "text": "Губная реформа (ход 5) дала дворянскому роду +40 рублей к доходу."
+          },
+          {
+            "requiresFlag": "sokha-bribe",
+            "effect": {
+              "casualtyReduction": 0.25
+            },
+            "text": "Заниженная норма воинов (ход 3) снизила потери на четверть."
+          }
+        ]
       },
       {
         "key": "upoved-10-3",
@@ -837,8 +1217,65 @@
                 "zoloto": -10
               }
             }
-          ]
-        }
+          ],
+          "casualties": 0
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "sokha-bribe",
+            "effect": {
+              "zoloto": -150,
+              "slava": -3
+            },
+            "text": "Ревизия писцовых книг: подкуп писца (ход 3) раскрыт — −150 рублей, −3 знатности."
+          },
+          {
+            "requiresFlag": "kazan-siege",
+            "effect": {
+              "krestyane": 40
+            },
+            "text": "Поместья в Казанской земле за осаду (ход 8): +40 душ."
+          },
+          {
+            "requiresFlag": "kazan-assault",
+            "effect": {
+              "krestyane": 80
+            },
+            "text": "Поместья в Казанской земле за штурм (ход 8): +80 душ."
+          },
+          {
+            "requiresFlag": "oath-dmitry",
+            "effect": {
+              "krestyane": 40
+            },
+            "text": "Верность царевичу Дмитрию (ход 9): +40 душ."
+          },
+          {
+            "requiresFlag": "oath-staritsky",
+            "effect": {
+              "krestyane": -40
+            },
+            "text": "Сторонник Старицкого (ход 9): −40 душ, в наградах отказано."
+          },
+          {
+            "requiresFlag": "guba-supported",
+            "requiresEstate": "dvoryane",
+            "effect": {
+              "income": {
+                "key": "guba-bonus",
+                "amount": 40
+              }
+            },
+            "text": "Губная реформа (ход 5) дала дворянскому роду +40 рублей к доходу."
+          },
+          {
+            "requiresFlag": "sokha-bribe",
+            "effect": {
+              "casualtyReduction": 0.25
+            },
+            "text": "Заниженная норма воинов (ход 3) снизила потери на четверть."
+          }
+        ]
       }
     ],
     "turn": 10
@@ -876,7 +1313,10 @@
               }
             }
           ]
-        }
+        },
+        "setFlags": [
+          "astrakhan-service"
+        ]
       },
       {
         "key": "astraxan-11-2",
@@ -961,7 +1401,19 @@
           "nationalEffect": {
             "centralization": 1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "astrakhan-service",
+            "effect": {
+              "income": {
+                "key": "astrakhan",
+                "amount": 20
+              }
+            },
+            "text": "Участники Астраханского похода (ход 11) получают +20 рублей к доходу."
+          }
+        ]
       },
       {
         "key": "angliya-12-2",
@@ -976,7 +1428,22 @@
           "nationalEffect": {
             "centralization": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "astrakhan-service",
+            "effect": {
+              "income": {
+                "key": "astrakhan",
+                "amount": 20
+              }
+            },
+            "text": "Участники Астраханского похода (ход 11) получают +20 рублей к доходу."
+          }
+        ],
+        "setFlags": [
+          "merchant-charter"
+        ]
       },
       {
         "key": "angliya-12-3",
@@ -993,7 +1460,19 @@
           "nationalEffect": {
             "centralization": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "astrakhan-service",
+            "effect": {
+              "income": {
+                "key": "astrakhan",
+                "amount": 20
+              }
+            },
+            "text": "Участники Астраханского похода (ход 11) получают +20 рублей к доходу."
+          }
+        ]
       }
     ],
     "buildWindow": true,
@@ -1032,7 +1511,10 @@
               }
             }
           ]
-        }
+        },
+        "setFlags": [
+          "kurbsky-service"
+        ]
       },
       {
         "key": "livon-13-2",
@@ -1055,7 +1537,10 @@
               }
             }
           ]
-        }
+        },
+        "setFlags": [
+          "staritsky-service"
+        ]
       },
       {
         "key": "livon-13-3",
@@ -1138,7 +1623,16 @@
             "centralization": -1,
             "stability": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "kurbsky-service",
+            "effect": {
+              "slava": -5
+            },
+            "text": "Князь Курбский бежал в Литву: служба под его началом (ход 13) стоит 5 знатности."
+          }
+        ]
       },
       {
         "key": "chashniki-14-2",
@@ -1157,7 +1651,16 @@
           "nationalEffect": {
             "centralization": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "kurbsky-service",
+            "effect": {
+              "slava": -5
+            },
+            "text": "Князь Курбский бежал в Литву: служба под его началом (ход 13) стоит 5 знатности."
+          }
+        ]
       },
       {
         "key": "chashniki-14-3",
@@ -1184,7 +1687,16 @@
             "centralization": -1,
             "stability": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "kurbsky-service",
+            "effect": {
+              "slava": -5
+            },
+            "text": "Князь Курбский бежал в Литву: служба под его началом (ход 13) стоит 5 знатности."
+          }
+        ]
       }
     ],
     "turn": 14
@@ -1209,7 +1721,22 @@
           "nationalEffect": {
             "centralization": 1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "merchant-charter",
+            "effect": {
+              "income": {
+                "key": "merchant-charter",
+                "amount": 20
+              }
+            },
+            "text": "Челобитная купцов (ход 12) поддержана: англичанам закрыли розничную торговлю, доход рода +20 рублей."
+          }
+        ],
+        "setFlags": [
+          "korrup-clean"
+        ]
       },
       {
         "key": "korrup-15-2",
@@ -1224,7 +1751,22 @@
             "centralization": -1,
             "stability": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "merchant-charter",
+            "effect": {
+              "income": {
+                "key": "merchant-charter",
+                "amount": 20
+              }
+            },
+            "text": "Челобитная купцов (ход 12) поддержана: англичанам закрыли розничную торговлю, доход рода +20 рублей."
+          }
+        ],
+        "setFlags": [
+          "korrup-exposed"
+        ]
       },
       {
         "key": "korrup-15-3",
@@ -1240,7 +1782,22 @@
             "centralization": 1,
             "stability": 1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "merchant-charter",
+            "effect": {
+              "income": {
+                "key": "merchant-charter",
+                "amount": 20
+              }
+            },
+            "text": "Челобитная купцов (ход 12) поддержана: англичанам закрыли розничную торговлю, доход рода +20 рублей."
+          }
+        ],
+        "setFlags": [
+          "korrup-informant"
+        ]
       }
     ],
     "turn": 15
@@ -1278,6 +1835,28 @@
         },
         "setFlags": [
           "oprichnik"
+        ],
+        "conditionalEffects": [
+          {
+            "requiresFlag": "korrup-exposed",
+            "effect": {
+              "zoloto": -150,
+              "slava": -4
+            },
+            "text": "Коррупционное дело (ход 15): дьяк изобличён, род оштрафован на 150 рублей и лишён 4 знатности."
+          },
+          {
+            "requiresFlag": "korrup-informant",
+            "effect": {
+              "zoloto": 100
+            },
+            "text": "Донос на дьяка (ход 15) принёс роду 100 рублей."
+          },
+          {
+            "requiresFlag": "korrup-clean",
+            "effect": {},
+            "text": "Дело (ход 15) обошло ваш род стороной."
+          }
         ]
       },
       {
@@ -1292,7 +1871,29 @@
           "nationalEffect": {
             "centralization": 1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "korrup-exposed",
+            "effect": {
+              "zoloto": -150,
+              "slava": -4
+            },
+            "text": "Коррупционное дело (ход 15): дьяк изобличён, род оштрафован на 150 рублей и лишён 4 знатности."
+          },
+          {
+            "requiresFlag": "korrup-informant",
+            "effect": {
+              "zoloto": 100
+            },
+            "text": "Донос на дьяка (ход 15) принёс роду 100 рублей."
+          },
+          {
+            "requiresFlag": "korrup-clean",
+            "effect": {},
+            "text": "Дело (ход 15) обошло ваш род стороной."
+          }
+        ]
       },
       {
         "key": "oprich-16-3",
@@ -1306,7 +1907,29 @@
           "nationalEffect": {
             "stability": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "korrup-exposed",
+            "effect": {
+              "zoloto": -150,
+              "slava": -4
+            },
+            "text": "Коррупционное дело (ход 15): дьяк изобличён, род оштрафован на 150 рублей и лишён 4 знатности."
+          },
+          {
+            "requiresFlag": "korrup-informant",
+            "effect": {
+              "zoloto": 100
+            },
+            "text": "Донос на дьяка (ход 15) принёс роду 100 рублей."
+          },
+          {
+            "requiresFlag": "korrup-clean",
+            "effect": {},
+            "text": "Дело (ход 15) обошло ваш род стороной."
+          }
+        ]
       }
     ],
     "turn": 16
@@ -1333,7 +1956,17 @@
         "military": {
           "deploy": 1,
           "casualties": 0.5
-        }
+        },
+        "requiresNoneOf": [
+          "staritsky-service"
+        ]
+      },
+      {
+        "requiresFlag": "staritsky-service",
+        "effect": {
+          "slava": -3
+        },
+        "text": "Князь Владимир Старицкий казнён: служба под его началом (ход 13) стоит роду 3 знатности."
       },
       {
         "text": "Ваш род остался в земщине, отряда не выставляет, но по земщине тоже идут обыски и опричные «прокормы»: опричники взяли в вашей вотчине людей и запасы.",
@@ -1341,7 +1974,11 @@
           "slava": -3,
           "krestyane": -20,
           "zoloto": -50
-        }
+        },
+        "requiresNoneOf": [
+          "oprichnik",
+          "staritsky-service"
+        ]
       }
     ]
   },
@@ -1681,9 +2318,7 @@
       {
         "key": "erma-21-3",
         "label": "3. Не будем рисковать. Сибирь – дикий край, а Кучум ещё не добит.",
-        "effect": {
-          "slava": -1
-        },
+        "effect": {},
         "outcomeTitle": "Вы не стали вкладываться в сибирское дело.",
         "outcomeText": "Вы не стали вкладываться в сибирское дело."
       }
@@ -1700,26 +2335,27 @@
       {
         "key": "zapoved-22-1",
         "label": "1. Силой удержим крестьян. Царский указ на нашей стороне.",
-        "effect": {
-          "slava": 1
-        },
+        "effect": {},
         "outcomeTitle": "Крестьяне остались, но затаили злобу.",
         "outcomeText": "Крестьяне остались, но затаили злобу.",
         "majorityBonus": {
           "nationalEffect": {
             "stability": -1
           }
-        }
+        },
+        "setFlags": [
+          "zapoved-force"
+        ]
       },
       {
         "key": "zapoved-22-2",
         "label": "2. Отпустим крестьян за пожилое, несмотря на запрет. Пусть уходят – найдутся другие.",
         "effect": {
-          "krestyane": -30,
-          "zoloto": 15
+          "krestyanePercent": -10,
+          "zolotoPerKrestyaneLost": 1
         },
-        "outcomeTitle": "Крестьяне ушли.",
-        "outcomeText": "Крестьяне ушли.",
+        "outcomeTitle": "Крестьяне ушли, уплатив пожилое.",
+        "outcomeText": "Крестьяне ушли, уплатив пожилое. Деньги от пожилого поступили в казну.",
         "majorityBonus": {
           "nationalEffect": {
             "centralization": -1
@@ -1758,7 +2394,31 @@
       "centralization": 3
     },
     "turn": 23,
-    "incomeEnd": "oprich-pensions"
+    "incomeEnd": "oprich-pensions",
+    "conditionalEffects": [
+      {
+        "requiresFlag": "oprichnik",
+        "effect": {
+          "income": {
+            "key": "oprich-penalty",
+            "amount": -30
+          }
+        },
+        "text": "После отмены опричнины вступившие в неё (ход 16) лишились пожалований: доход рода −30 рублей."
+      },
+      {
+        "requiresFlag": "zapoved-force",
+        "effect": {
+          "krestyane": -40,
+          "zoloto": -100
+        },
+        "text": "Крестьяне, удержанные силой в ходе 22, подожгли усадьбу: −40 душ, −100 рублей."
+      },
+      {
+        "effect": {},
+        "text": "Перемены в стране обошли ваш род стороной."
+      }
+    ]
   },
   {
     "id": "uglich-24",
@@ -1958,7 +2618,7 @@
         "key": "donate",
         "label": "Последовать примеру царя — раздать хлеб своим крепостным из своих запасов",
         "effect": {
-          "krestyane": -20,
+          "krestyanePercent": -10,
           "zoloto": -100
         },
         "outcomeTitle": "Доброта спасла многих",
@@ -1973,8 +2633,8 @@
         "key": "sell",
         "label": "Продать запасы хлеба по нынешним высоким ценам",
         "effect": {
-          "krestyane": -100,
-          "zoloto": 1000
+          "krestyanePercent": -30,
+          "zoloto": 200
         },
         "outcomeTitle": "Прибыль на чужой беде",
         "outcomeText": "Часть ваших крестьян погибла от голода, многие бежали на юг. Но прибыль от продажи хлеба была очень хорошей.",
@@ -2438,7 +3098,10 @@
         "military": {
           "deploy": 1,
           "casualties": 0.5
-        }
+        },
+        "setFlags": [
+          "tushino-service"
+        ]
       },
       {
         "key": "saponos-34-3",
@@ -2616,6 +3279,9 @@
             "requiresFlag": "klushino-served",
             "text": "Семибоярщина помнит, кто служил в клушинском войске: при распределении должностей ваш род отодвинули."
           }
+        ],
+        "setFlags": [
+          "coup-abstained"
         ]
       },
       {
@@ -2674,7 +3340,17 @@
             "slava": 1,
             "text": "Присяга на условиях договора отмечена в посольских бумагах: ваш род прибавил чести."
           }
-        }
+        },
+        "setFlags": [
+          "vladislav-sworn"
+        ],
+        "conditionalEffects": [
+          {
+            "requiresFlag": "coup-abstained",
+            "effect": {},
+            "text": "Вы не участвовали в перевороте 1610 года и не входите в число тех, кто определяет условия присяги."
+          }
+        ]
       },
       {
         "key": "seme-38-2",
@@ -2689,14 +3365,28 @@
             "centralization": 1,
             "stability": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "coup-abstained",
+            "effect": {},
+            "text": "Вы не участвовали в перевороте 1610 года и не входите в число тех, кто определяет условия присяги."
+          }
+        ]
       },
       {
         "key": "seme-38-3",
         "label": "3. Ничего не обещать и ждать, пока решат другие. Уж лучше переждать смуту, чем ошибиться.",
         "effect": {},
         "outcomeTitle": "Вы не дали присяги и не получили ни милости, ни наказания.",
-        "outcomeText": "Вы не дали присяги и не получили ни милости, ни наказания."
+        "outcomeText": "Вы не дали присяги и не получили ни милости, ни наказания.",
+        "conditionalEffects": [
+          {
+            "requiresFlag": "coup-abstained",
+            "effect": {},
+            "text": "Вы не участвовали в перевороте 1610 года и не входите в число тех, кто определяет условия присяги."
+          }
+        ]
       }
     ],
     "turn": 38
@@ -2725,6 +3415,13 @@
         },
         "setFlags": [
           "king-servant"
+        ],
+        "conditionalEffects": [
+          {
+            "requiresFlag": "vladislav-sworn",
+            "effect": {},
+            "text": "Вы уже присягнули Владиславу в ходе 38 и числитесь среди признавших королевича."
+          }
         ]
       },
       {
@@ -2739,14 +3436,31 @@
           "nationalEffect": {
             "centralization": 1
           }
-        }
+        },
+        "setFlags": [
+          "filaret-captive"
+        ],
+        "conditionalEffects": [
+          {
+            "requiresFlag": "vladislav-sworn",
+            "effect": {},
+            "text": "Вы уже присягнули Владиславу в ходе 38 и числитесь среди признавших королевича."
+          }
+        ]
       },
       {
         "key": "smol-39-3",
         "label": "3. Не вмешиваться в споры послов и короля: отозвать родственника домой под предлогом болезни.",
         "effect": {},
         "outcomeTitle": "О вас не вспоминают ни с похвалой, ни с осуждением.",
-        "outcomeText": "В апреле 1611 года король, так и не добившись сдачи города, велел арестовать послов. Князь Голицын и митрополит Филарет были отправлены пленниками в Польшу.3 июня 1611 года, после двадцати месяцев осады, поляки взорвали часть стены и ворвались в Смоленск. Последние защитники заперлись в Успенском соборе и взорвали пороховой погреб вместе с собой. Раненый воевода Шеин попал в плен. Смоленск перешёл под власть Польши.Ваш родственник благополучно вернулся домой. О вас не вспоминают ни с похвалой, ни с осуждением."
+        "outcomeText": "В апреле 1611 года король, так и не добившись сдачи города, велел арестовать послов. Князь Голицын и митрополит Филарет были отправлены пленниками в Польшу.3 июня 1611 года, после двадцати месяцев осады, поляки взорвали часть стены и ворвались в Смоленск. Последние защитники заперлись в Успенском соборе и взорвали пороховой погреб вместе с собой. Раненый воевода Шеин попал в плен. Смоленск перешёл под власть Польши.Ваш родственник благополучно вернулся домой. О вас не вспоминают ни с похвалой, ни с осуждением.",
+        "conditionalEffects": [
+          {
+            "requiresFlag": "vladislav-sworn",
+            "effect": {},
+            "text": "Вы уже присягнули Владиславу в ходе 38 и числитесь среди признавших королевича."
+          }
+        ]
       }
     ],
     "turn": 39
@@ -2908,7 +3622,16 @@
             "centralization": 2,
             "stability": 2
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "king-servant",
+            "effect": {
+              "slava": -2
+            },
+            "text": "Служба королю под Смоленском (ход 39) припомнилась на Земском соборе: −2 знатности."
+          }
+        ]
       },
       {
         "key": "zem-42-2",
@@ -2922,7 +3645,16 @@
           "nationalEffect": {
             "stability": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "king-servant",
+            "effect": {
+              "slava": -2
+            },
+            "text": "Служба королю под Смоленском (ход 39) припомнилась на Земском соборе: −2 знатности."
+          }
+        ]
       },
       {
         "key": "zem-42-3",
@@ -2936,7 +3668,16 @@
           "nationalEffect": {
             "stability": 1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "king-servant",
+            "effect": {
+              "slava": -2
+            },
+            "text": "Служба королю под Смоленском (ход 39) припомнилась на Земском соборе: −2 знатности."
+          }
+        ]
       }
     ],
     "buildWindow": true,
@@ -3199,26 +3940,61 @@
           "nationalEffect": {
             "stability": 1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "filaret-captive",
+            "effect": {},
+            "text": "Ваш родственник, попавший в плен вместе с Филаретом (ход 39), возвращается с ним в 1619 году."
+          }
+        ]
       },
       {
         "key": "filaret-46-2",
         "label": "2. Напомнить о службе вашего рода Тушинскому двору и просить милости. Тушинцы теперь тоже в чести.",
         "effect": {},
         "outcomeTitle": "Просьба о милости",
-        "outcomeText": "Вы напомнили о службе рода Тушинскому двору. Патриарх Филарет сам вернулся из польского плена и к воспоминаниям о тушинской службе относится сдержанно: исход вашей просьбы зависит от того, что стоит за вашим родом.",
+        "outcomeText": "Вы напомнили о службе рода Тушинскому двору. Патриарх Филарет сам вернулся из польского плена и к воспоминаниям о тушинской службе относится сдержанно: исход вашей просьбы зависит от того, что стоит за вашим родом. Если в ходе 39 ваш родственник попал в плен, он возвращается в ходе 46 вместе с Филаретом.",
         "majorityBonus": {
           "nationalEffect": {
             "centralization": 1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "filaret-captive",
+            "effect": {},
+            "text": "Ваш родственник, попавший в плен вместе с Филаретом (ход 39), возвращается с ним в 1619 году."
+          },
+          {
+            "requiresFlag": "tushino-service",
+            "effect": {
+              "slava": 3
+            },
+            "text": "Филарет учёл службу вашего рода Тушинскому двору (ход 34): +3 знатности."
+          },
+          {
+            "requiresNotFlag": "tushino-service",
+            "effect": {
+              "slava": -2
+            },
+            "text": "Филарет не забыл, что ваш род не служил Тушинскому двору (ход 34): −2 знатности."
+          }
+        ]
       },
       {
         "key": "filaret-46-3",
         "label": "3. Промолчать и не искать милости у патриарха.",
         "effect": {},
         "outcomeTitle": "Вы не получили ни милости, ни опалы.",
-        "outcomeText": "Вы не получили ни милости, ни опалы."
+        "outcomeText": "Вы не получили ни милости, ни опалы.",
+        "conditionalEffects": [
+          {
+            "requiresFlag": "filaret-captive",
+            "effect": {},
+            "text": "Ваш родственник, попавший в плен вместе с Филаретом (ход 39), возвращается с ним в 1619 году."
+          }
+        ]
       }
     ],
     "turn": 46
@@ -3353,7 +4129,10 @@
         "label": "3. Затаиться и не вмешиваться. В такое время лучше не выделяться.",
         "effect": {},
         "outcomeTitle": "Вы не пострадали, но и не получили милости.",
-        "outcomeText": "Вы не пострадали, но и не получили милости."
+        "outcomeText": "Вы не пострадали, но и не получили милости.",
+        "setFlags": [
+          "salt-riot-hid"
+        ]
       }
     ],
     "turn": 48
@@ -3379,7 +4158,14 @@
             "centralization": 1,
             "stability": 1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "salt-riot-hid",
+            "effect": {},
+            "text": "Вы затаились во время соляного бунта (ход 48), и голос вашего рода на Земском соборе не учтён."
+          }
+        ]
       },
       {
         "key": "zem-49-2",
@@ -3400,7 +4186,14 @@
             "slava": -2,
             "text": "Бояре недовольны вашей позицией на соборе: честь рода уязвлена."
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "salt-riot-hid",
+            "effect": {},
+            "text": "Вы затаились во время соляного бунта (ход 48), и голос вашего рода на Земском соборе не учтён."
+          }
+        ]
       },
       {
         "key": "zem-49-3",
@@ -3414,7 +4207,14 @@
           "nationalEffect": {
             "centralization": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "salt-riot-hid",
+            "effect": {},
+            "text": "Вы затаились во время соляного бунта (ход 48), и голос вашего рода на Земском соборе не учтён."
+          }
+        ]
       }
     ],
     "turn": 49
@@ -3443,7 +4243,10 @@
           "nationalEffect": {
             "centralization": 1
           }
-        }
+        },
+        "setFlags": [
+          "sibir-invested"
+        ]
       },
       {
         "key": "dezh-50-2",
@@ -3457,7 +4260,10 @@
           "nationalEffect": {
             "centralization": 1
           }
-        }
+        },
+        "setFlags": [
+          "sibir-invested"
+        ]
       },
       {
         "key": "dezh-50-3",
@@ -3533,7 +4339,7 @@
     "type": "normal",
     "era": "1653 год",
     "title": "Реформа патриарха Никона. 1653 год. Противостояние Никона и бояр.",
-    "description": "Патриарх Никон решил исправить церковные книги и обряды по греческим образцам: двоеперстие заменить троеперстием, имя Иисус писать через «и», креститься тремя перстами. Реформа вызвала раскол в церкви, а бояре, связанные с прежней обрядовой традицией, видят в Никоне опасного соперника. Никон стремится к власти, какой не имел ни один патриарх, а бояре боятся, что он подчинит себе царя.",
+    "description": "Патриарх Никон решил исправить церковные книги и обряды по греческим образцам: двоеперстие заменить троеперстием, имя Иисус писать через «и», креститься тремя перстами. Реформа вызвала раскол в церкви, а бояре, связанные с прежней обрядовой традицией, видят в Никоне опасного соперника. Никон стремится к власти, какой не имел ни один патриарх, а бояре боятся, что он подчинит себе царя. В те же годы купец Хабаров, в чью экспедицию вы вложились в ходе 50, просит у рода 150 рублей в долг — дать или отказать?",
     "choices": [
       {
         "key": "nikon-52-1",
@@ -3549,7 +4355,10 @@
             "centralization": 1,
             "stability": -1
           }
-        }
+        },
+        "setFlags": [
+          "nikon-side"
+        ]
       },
       {
         "key": "nikon-52-2",
@@ -3570,7 +4379,10 @@
             "slava": 2,
             "text": "Бояре поддерживают сторонников старины: ваш род прибавил чести."
           }
-        }
+        },
+        "setFlags": [
+          "old-rite-side"
+        ]
       },
       {
         "key": "nikon-52-3",
@@ -3578,6 +4390,24 @@
         "effect": {},
         "outcomeTitle": "Вы не получили ни милости Никона, ни поддержки бояр.",
         "outcomeText": "Вы не получили ни милости Никона, ни поддержки бояр."
+      },
+      {
+        "key": "khabarov-loan",
+        "label": "4. Дать Хабарову 150 рублей в долг.",
+        "requiresFlag": "sibir-invested",
+        "effect": {
+          "zoloto": -150
+        },
+        "outcomeTitle": "Вы дали Хабарову 150 рублей.",
+        "outcomeText": "Вы дали Хабарову 150 рублей в долг: пусть ясак окупит и этот заём."
+      },
+      {
+        "key": "khabarov-refuse",
+        "label": "5. Отказать Хабарову в долге.",
+        "requiresFlag": "sibir-invested",
+        "effect": {},
+        "outcomeTitle": "Вы отказали Хабарову в долге.",
+        "outcomeText": "Вы отказали Хабарову в долге: пусть ищет деньги на стороне."
       }
     ],
     "buildWindow": true,
@@ -3811,7 +4641,19 @@
             "centralization": 1,
             "stability": -1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "nikon-side",
+            "effect": {},
+            "text": "На Большом соборе 1666–1667 годов вы выступаете на стороне Никона."
+          },
+          {
+            "requiresFlag": "old-rite-side",
+            "effect": {},
+            "text": "На Большом соборе 1666–1667 годов вы защищаете старые обряды."
+          }
+        ]
       },
       {
         "key": "big-56-2",
@@ -3825,7 +4667,19 @@
           "nationalEffect": {
             "stability": 1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "nikon-side",
+            "effect": {},
+            "text": "На Большом соборе 1666–1667 годов вы выступаете на стороне Никона."
+          },
+          {
+            "requiresFlag": "old-rite-side",
+            "effect": {},
+            "text": "На Большом соборе 1666–1667 годов вы защищаете старые обряды."
+          }
+        ]
       },
       {
         "key": "big-56-3",
@@ -3841,7 +4695,19 @@
             "centralization": -1,
             "stability": 1
           }
-        }
+        },
+        "conditionalEffects": [
+          {
+            "requiresFlag": "nikon-side",
+            "effect": {},
+            "text": "На Большом соборе 1666–1667 годов вы выступаете на стороне Никона."
+          },
+          {
+            "requiresFlag": "old-rite-side",
+            "effect": {},
+            "text": "На Большом соборе 1666–1667 годов вы защищаете старые обряды."
+          }
+        ]
       },
       {
         "key": "big-56-4",
@@ -3861,6 +4727,18 @@
         },
         "setFlags": [
           "raskol-tax"
+        ],
+        "conditionalEffects": [
+          {
+            "requiresFlag": "nikon-side",
+            "effect": {},
+            "text": "На Большом соборе 1666–1667 годов вы выступаете на стороне Никона."
+          },
+          {
+            "requiresFlag": "old-rite-side",
+            "effect": {},
+            "text": "На Большом соборе 1666–1667 годов вы защищаете старые обряды."
+          }
         ]
       }
     ],
@@ -3954,16 +4832,7 @@
             "centralization": 2,
             "stability": 1
           }
-        },
-        "conditionalEffects": [
-          {
-            "effect": {
-              "krestyane": -20
-            },
-            "requiresFlag": "raskol-tax",
-            "text": "Раскольники ушли к Разину."
-          }
-        ]
+        }
       },
       {
         "key": "razin-58-2",
@@ -4110,7 +4979,16 @@
     "era": "1682 год",
     "title": "Воцарение Фёдора Алексеевича и отмена местничества. 1682 год. Конец игры.",
     "description": "На престоле — тихий и набожный царь Фёдор Алексеевич. По его велению местничество отменено: спор о местах по родословным более не останавливает службу. «Долгий век» подходит к концу — время подсчитывать, что осталось от державы и от вашего рода.",
-    "effect": {}
+    "effect": {},
+    "conditionalEffects": [
+      {
+        "maxSlava": 9,
+        "effect": {
+          "slava": 1
+        },
+        "text": "Задним числом род, у которого знатность к концу игры ниже 10, получает 1 знатность."
+      }
+    ]
   },
   {
     "id": "assembly-final",

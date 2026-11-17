@@ -529,6 +529,49 @@
       timer ? timer.textContent : 'нет таймера');
   }
 
+  // ---- правки содержаний ходов 10, 21, 22, 26 --------------------------------
+  async function contentChecks(){
+    const choice = (id, key) => {
+      const ev = state.events.find(e => e.id === id);
+      return ev && ev.choices.find(c => c.key === key);
+    };
+    const rod = {estate: 'boyare', resources: {krestyane: 200, slava: 10, zoloto: 100}, flags: {}};
+    const c102 = choice('upoved-10', 'upoved-10-2');
+    const c103 = choice('upoved-10', 'upoved-10-3');
+    const m2 = c102 && computeMilitary(200, c102.military || {}, []);
+    const m3 = c103 && computeMilitary(200, c103.military || {}, []);
+    check('Ход 10: плата за выставление — 5 рублей за холопа',
+      !!m2 && !!m3 && militaryEquipmentCost(m2.fielded) === 50 && militaryEquipmentCost(m3.fielded) === 25,
+      m2 && m3 ? `${m2.fielded}×5=${militaryEquipmentCost(m2.fielded)}, ${m3.fielded}×5=${militaryEquipmentCost(m3.fielded)}` : 'нет события');
+    const scaleLoss = c => ((c && c.military && c.military.scale) || []).some(s => (s.effect || {}).krestyane < 0);
+    check('Ход 10: варианты 2 и 3 не губят отправленных холопов',
+      !!m2 && !!m3 && m2.lost === 0 && m3.lost === 0 && !scaleLoss(c102) && !scaleLoss(c103),
+      m2 && m3 ? `погибло ${m2.lost}/${m3.lost}` : 'нет события');
+
+    const c213 = choice('erma-21', 'erma-21-3');
+    check('Ход 21: отказ от сибирского дела не снижает знатность',
+      !!c213 && !(c213.effect && c213.effect.slava < 0) && !(resolveEffect(c213, rod).slava < 0),
+      c213 ? JSON.stringify(resolveEffect(c213, rod)) : 'нет события');
+    const c221 = choice('zapoved-22', 'zapoved-22-1');
+    check('Ход 22: удержание крестьян не даёт знатности',
+      !!c221 && !resolveEffect(c221, rod).slava,
+      c221 ? JSON.stringify(resolveEffect(c221, rod)) : 'нет события');
+    const c222 = choice('zapoved-22', 'zapoved-22-2');
+    const e222 = c222 && resolveEffect(c222, rod);
+    check('Ход 22: уходят 10% крестьян, пожилое равно числу ушедших',
+      !!e222 && e222.krestyane === -20 && e222.zoloto === 20,
+      JSON.stringify(e222));
+
+    const donate = choice('famine-1601', 'donate');
+    const sell = choice('famine-1601', 'sell');
+    const de = donate && resolveEffect(donate, rod);
+    const se = sell && resolveEffect(sell, rod);
+    check('Ход 26: раздача хлеба — −10% крестьян и −100 рублей',
+      !!de && de.krestyane === -20 && de.zoloto === -100, JSON.stringify(de));
+    check('Ход 26: продажа хлеба — −30% крестьян и +200 рублей',
+      !!se && se.krestyane === -60 && se.zoloto === 200, JSON.stringify(se));
+  }
+
   // ---- автоматический подсчёт большинства на трёх родах ---------------------
   // В живой игре каждый род голосует на своём устройстве, а ORGANIZATOR (role=gm)
   // получает обновление Firebase и сам подводит итог — без нажатия «Огласить итоги».
@@ -634,6 +677,7 @@
       await waitFor(() => Object.keys(state.rods || {}).length === 2);
       await gmButtons();
       await tz23Checks();
+      await contentChecks();
       // один род покупает здания, другой пропускает окна — проверяем оба пути
       await playRod('ТЕСТ-БОЯРЕ', 'boyare', true);
       await playRod('ТЕСТ-ДВОРЯНЕ', 'dvoryane', false);
