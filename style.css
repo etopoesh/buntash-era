@@ -128,6 +128,12 @@
     cursor:pointer;
   }
   .choice-btn:active{background:var(--parchment-dark);}
+  /* ТЗ 23: вариант, который игрок не может оплатить, выглядит ненажимаемым */
+  .choice-btn:disabled{opacity:0.5;cursor:not-allowed;background:#EDE6D5;}
+  .act-timer{
+    font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;
+    padding:5px 10px;border:1px solid rgba(255,255,255,0.35);border-radius:4px;white-space:nowrap;
+  }
 
   .outcome-box{
     border-left:4px solid var(--seal);background:#F6ECD9;padding:14px 16px;border-radius:0 4px 4px 0;

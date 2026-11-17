@@ -5,7 +5,7 @@ function initialState(){
     rods: {},
     globalResults: {},
     auctions: {},
-    national: {stability: 10, centralization: 10},
+    national: {stability: 8, centralization: 6},
     releasedAssemblies: {},
     majorityBonusResolved: {},
     buildings: null // ТЗ 22: каталог построек; null — не загружен, окно не показывается
@@ -127,6 +127,8 @@ function applyEffect(res, effect){
     out[k] = (out[k] || 0) + eff[k];
   });
   if(out.krestyane < 20) out.krestyane = 20;
+  // ТЗ 23: знатность не может уйти ниже нуля.
+  if(out.slava < 0) out.slava = 0;
   return out;
 }
 
@@ -320,23 +322,26 @@ function patchAuction(auction){
 // (applyEconomyTick), и прикидка «Хозяйство за ход» на экране рода, формулы не дублируются.
 // Возвращает составляющие: бегство от централизации и от стабильности (%), крестьян до/после (с полом 20),
 // их изменение и доход в рублях за ход. fleeReduction — сумма бонусов от построек (ТЗ 22), итог ≥ 0.
+// ТЗ 23: процент потери — сумма модификаторов централизации и стабильности, минимум 0.
 function computeEconomyTick(resources, estate, national, incomeMods, fleeReduction){
-  const nat = national || {stability: 10, centralization: 10};
+  const nat = national || {stability: 8, centralization: 6};
   const krestyaneBefore = resources.krestyane;
   const mods = Array.isArray(incomeMods) ? incomeMods : [];
   // Доход: 0.1 (рубля) за одного крестьянина, итоговая сумма за ход округляется в большую сторону.
   const income = Math.ceil(krestyaneBefore * 0.1 + mods.reduce((a, b) => a + b, 0));
 
-  // Бегство от централизации: ниже 5 — дворяне 4%, бояре 2%; иначе 0
-  const fleeCentralPct = nat.centralization < 5 ? (estate === 'boyare' ? 2 : 4) : 0;
-  // Бегство от стабильности — ступенями: ниже 3 → 6%, от 3 до 5 → 3%, от 5 и выше → 0%
-  const fleeStabilityPct = nat.stability < 3 ? 6 : (nat.stability < 5 ? 3 : 0);
-  const fleePct = Math.max(0, fleeCentralPct + fleeStabilityPct - (fleeReduction || 0));
+  // Централизация: больше 5 — 0%; меньше 5 — дворяне +1%, бояре −1%; ровно 5 — 0%.
+  const fleeCentralPct = nat.centralization > 5 ? 0
+    : (nat.centralization < 5 ? (estate === 'boyare' ? -1 : 1) : 0);
+  // Стабильность: 7 и выше — 0%; 4–6 — +1,5%; 3 и ниже — 3%.
+  const fleeStabilityPct = nat.stability >= 7 ? 0 : (nat.stability >= 4 ? 1.5 : 3);
+  const rawFleePct = fleeCentralPct + fleeStabilityPct - (fleeReduction || 0);
+  const fleePct = Math.max(0, Math.round(rawFleePct * 100) / 100);
   // R5: потеря считается один раз от текущих душ; округляется сама потеря, а не итог
   const fleeLoss = fleePct !== 0 ? roundHalfUp(krestyaneBefore * fleePct / 100) : 0;
   const krestyaneAfter = Math.max(20, krestyaneBefore - fleeLoss);
 
-  return {zolotoDelta: income, fleeCentralPct: fleeCentralPct, fleeStabilityPct: fleeStabilityPct, fleeLoss: fleeLoss, krestyaneBefore: krestyaneBefore, krestyaneAfter: krestyaneAfter, krestyaneDelta: krestyaneAfter - krestyaneBefore};
+  return {zolotoDelta: income, fleeCentralPct: fleeCentralPct, fleeStabilityPct: fleeStabilityPct, fleePct: fleePct, fleeLoss: fleeLoss, krestyaneBefore: krestyaneBefore, krestyaneAfter: krestyaneAfter, krestyaneDelta: krestyaneAfter - krestyaneBefore};
 }
 
 function roundHalfUp(x){
@@ -348,6 +353,45 @@ function roundHalfUp(x){
 // Посул (R7): готовая сумма — рубли −max(50, база − 5 × знатность до выбора).
 function bribeCost(base, slava){
   return Math.max(50, base - 5 * (slava || 0));
+}
+
+// ТЗ 23: снаряжение выставленного холопа стоит 5 рублей.
+function militaryEquipmentCost(fielded){
+  return 5 * Math.max(0, fielded || 0);
+}
+
+// Военный расчёт варианта по ресурсам на момент-click (до применения эффекта).
+function choiceMilitaryOf(choice, rod, resources){
+  if(!choice || !choice.military) return null;
+  const reductions = rod && rod.casualtyReduction ? [rod.casualtyReduction] : [];
+  return computeMilitary(resources.krestyane, choice.military, reductions);
+}
+
+// Сколько рублей должно быть в казне, чтобы вариант был доступен (ТЗ 23).
+// Считаем все денежные статьи вместе: прямой расход, посул, снаряжение холопов.
+function choiceMoneyCost(choice, rod, resources){
+  if(!choice) return 0;
+  const eff = choice.effect || {};
+  const estateEff = choice.effectByEstate && choice.effectByEstate[rod.estate];
+  const flags = Object.assign({}, (rod && rod.flags) || {});
+  (choice.setFlags || []).forEach(f => { flags[f] = true; });
+  const rodForConds = {flags, estate: rod.estate, resources};
+  const ce = findConditionalEffect(choice, rodForConds);
+  let required = 0;
+  [eff, estateEff, ce && ce.effect].forEach(e => {
+    if(e && typeof e.zoloto === 'number' && e.zoloto < 0) required += -e.zoloto;
+  });
+  if(eff.bribe !== undefined) required += bribeCost(eff.bribe, resources.slava);
+  const mil = choiceMilitaryOf(choice, rod, resources);
+  if(mil) required += militaryEquipmentCost(mil.fielded);
+  return required;
+}
+
+// Три блока игры: 0–25, 26–43, 44–63. Нужен для таймера 40 минут в шапке игрока.
+function actOfIndex(i){
+  if(i >= 44) return 3;
+  if(i >= 26) return 2;
+  return 1;
 }
 
 // Военный расчёт (R9), чистая функция. military = {deploy, casualties, scale},
@@ -515,7 +559,7 @@ async function txResources(rodName, fn){
 // Изменение национальных показателей: effect = {stability: +1, ...}.
 async function txNational(effect){
   return dbTx('national', cur => {
-    const n = cur || {stability: 10, centralization: 10};
+    const n = cur || {stability: 8, centralization: 6};
     for(const k in effect) n[k] = (n[k] || 0) + effect[k];
     return n;
   });
@@ -525,7 +569,7 @@ async function txNational(effect){
 // nationalEffect прибавляет, nationalSet задаёт конкретное значение — провал не зависит от прошлых чисел.
 async function setNational(values){
   return dbTx('national', cur => {
-    const n = cur || {stability: 10, centralization: 10};
+    const n = cur || {stability: 8, centralization: 6};
     for(const k in values) n[k] = values[k];
     return n;
   });

@@ -15,7 +15,7 @@ function landingScreen(){
   <div class="center-screen">
     <div class="landing-card">
       <div class="crest">Б</div>
-      <h1 class="title">Бунташный век</h1>
+      <h1 class="title">Долгий век</h1>
       <p class="subtitle">Ролевая игра для 7х классов</p>
       <button class="role-btn" id="btn-rod">Начать игру</button>
     </div>
@@ -47,12 +47,15 @@ function closeBuildDetail(){
 
 // Блок «Хозяйство за ход» + строки наград за знатность. resources — ресурсы, по которым считается прикидка;
 // rod и turn — чьи прибавки к доходу и тик какого хода имеется в виду (R4/R6).
-function turnSummaryHtml(resources, estate, rod, turn){
+// equipmentCost — снаряжение выставленных холопов (ТЗ 23), показывается отдельной графой.
+function turnSummaryHtml(resources, estate, rod, turn, equipmentCost){
   const t = computeEconomyTick(resources, estate, state.national, activeIncomeMods(rod, turn), fleeReductionOf(rod));
   const lines = [];
-  if(t.fleeCentralPct) lines.push('Бегство из-за низкой централизации:');
-  if(t.fleeStabilityPct) lines.push('Бегство из-за низкой стабильности:');
-  if(t.fleeCentralPct || t.fleeStabilityPct) lines.push(t.krestyaneDelta < 0 ? `Крестьяне: −${-t.krestyaneDelta}` : 'Крестьяне: 0');
+  if(t.fleePct > 0){
+    lines.push('Бегство крестьян:');
+    lines.push(t.krestyaneDelta < 0 ? `Крестьяне: −${-t.krestyaneDelta}` : 'Крестьяне: 0');
+  }
+  if(equipmentCost > 0) lines.push(`Расходы на снаряжение войска: −${equipmentCost}`);
   lines.push(`Рубли: +${t.zolotoDelta}`);
   const rewards = pendingMilestones(currentRodObject(), resources.slava)
     .map(m => `<div class="effect-line pos">Знатность: вам жалуют землю с крестьянами, +${m.krestyane}</div>`).join('');
@@ -64,6 +67,32 @@ function turnSummaryHtml(resources, estate, rod, turn){
     </div>`;
 }
 function currentRodObject(){ return state.rods[currentRod]; }
+
+// ТЗ 23: таймер 40 минут на блок. Отсчёт идёт от первого хода блока; метка времени
+// пишется в rods/<род>/actStarts/<номер блока> один раз, когда род впервые покидает событие блока.
+const ACT_MINUTES = 40;
+let actTimerInterval = null;
+function actTimerText(){
+  const rod = currentRodObject();
+  if(!rod) return '';
+  const act = actOfIndex(rod.progress || 0);
+  const prefix = `Блок ${act} из 3`;
+  const starts = rod.actStarts || {};
+  if(!starts[act]) return `${prefix} · ${ACT_MINUTES}:00`;
+  const remain = ACT_MINUTES * 60 * 1000 - (Date.now() - starts[act]);
+  if(remain <= 0) return `${prefix} · время вышло`;
+  const sec = Math.ceil(remain / 1000);
+  return `${prefix} · ${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+}
+function startActTimer(){
+  stopActTimer();
+  const paint = () => { const el = document.getElementById('act-timer'); if(el) el.textContent = actTimerText(); };
+  actTimerInterval = setInterval(paint, 1000);
+  paint();
+}
+function stopActTimer(){
+  if(actTimerInterval){ clearInterval(actTimerInterval); actTimerInterval = null; }
+}
 
 function rodJoinScreen(){
   const names = Object.keys(state.rods);
@@ -114,6 +143,7 @@ function rodScreen(){
   const header = `
     <div class="rod-header">
       <span class="name">${rod.estate === 'boyare' ? 'Боярский' : 'Дворянский'} род «${currentRod}» ${titleBadges}</span>
+      <span class="act-timer" id="act-timer">${actTimerText()}</span>
       <button id="btn-leave">перейти к выбору рода</button>
     </div>
     <div class="resource-bar">
@@ -261,9 +291,11 @@ function rodScreen(){
     // Военная ветка (опричники на ходе 17): расчёт по душам на момент показа, с накопленными снижениями потерь
     const mil = branch && branch.military ? computeMilitary(rod.resources.krestyane, branch.military, rod.casualtyReduction ? [rod.casualtyReduction] : []) : null;
     const effShown = Object.assign({}, eff);
+    const narrEquipmentCost = mil ? militaryEquipmentCost(mil.fielded) : 0;
     if(mil){
       for(const k in mil.scaleEffect) effShown[k] = (effShown[k] || 0) + mil.scaleEffect[k];
       if(mil.lost) effShown.krestyane = (effShown.krestyane || 0) - mil.lost;
+      if(narrEquipmentCost) effShown.zoloto = (effShown.zoloto || 0) - narrEquipmentCost;
     }
     const narrativeEffect = fmtDelta(effShown);
     const afterNarrative = applyEffect(rod.resources, effShown); // эффект события для прикидки уже учтён
@@ -274,9 +306,9 @@ function rodScreen(){
         <p class="event-desc">${ev.description}</p>
         ${branch && branch.text ? `<div class="outcome-box"><div class="otext">${branch.text}</div></div>` : ''}
         ${narrativeEffect ? `<div class="outcome-box">${narrativeEffect}</div>` : ''}
-        ${mil ? `<div class="outcome-box"><div class="effect-line">Боевые холопы: выставлено ${mil.fielded}, погибло ${mil.lost}</div></div>` : ''}
+        ${mil ? `<div class="outcome-box"><div class="effect-line">Боевые холопы: выставлено ${mil.fielded}, погибло ${mil.lost}</div>${narrEquipmentCost ? `<div class="effect-line neg">Расходы на снаряжение войска: −${narrEquipmentCost}</div>` : ''}</div>` : ''}
         ${rodCardLine}
-        ${turnSummaryHtml(afterNarrative, rod.estate, rod, ev.turn)}
+        ${turnSummaryHtml(afterNarrative, rod.estate, rod, ev.turn, narrEquipmentCost)}
         ${nextBtnHtml}
       </div>`;
   } else if(ev.type === 'auction'){
@@ -291,7 +323,7 @@ function rodScreen(){
             <div class="otitle">${won ? `Ваш род получил титул «${ev.titleName}»!` : `Титул «${ev.titleName}» получил род «${auction.winner}»`}</div>
             <div class="otext">${auction.narrative || ''}</div>
           </div>
-          ${turnSummaryHtml(rod.resources, rod.estate, rod, ev.turn)}
+          ${turnSummaryHtml(rod.resources, rod.estate, rod, ev.turn, 0)}
           ${nextBtnHtml}
         </div>`;
     } else {
@@ -319,8 +351,8 @@ function rodScreen(){
             <p class="event-desc">${ev.description}</p>
             ${auction.round > 1 ? `<p class="small-note">Второй раунд: ваша ставка сравнялась с другим родом. Новая ставка — из оставшихся рублей.</p>` : ''}
             <div class="bid-row">
-              <input type="number" id="bid-input" min="0" max="${res.zoloto}" placeholder="Рублей (макс. ${res.zoloto})">
-              <button class="choice-btn" id="btn-submit-bid">Сделать ставку</button>
+              <input type="number" id="bid-input" min="0" max="${res.zoloto}" placeholder="Рублей (макс. ${res.zoloto})"${res.zoloto <= 0 ? ' disabled' : ''}>
+              <button class="choice-btn" id="btn-submit-bid"${res.zoloto <= 0 ? ' disabled title="Не хватает рублей"' : ''}>Сделать ставку</button>
             </div>
           </div>`;
       }
@@ -338,7 +370,11 @@ function rodScreen(){
           <p class="event-desc">${ev.description}</p>
           ${rodCardLine}
           ${ev.choices.some(c=>c.druzhinaTiers) ? `<p class="event-desc">Ваши боевые холопы: <strong>${druzhinaOf(rod.resources)}</strong></p>` : ''}
-          ${availableChoices.map(c=>`<button class="choice-btn" data-key="${c.key}">${c.label}</button>`).join('')}
+          ${availableChoices.map(c=>{
+            const cost = choiceMoneyCost(c, rod, rod.resources);
+            const tooExpensive = cost > (rod.resources.zoloto || 0);
+            return `<button class="choice-btn" data-key="${c.key}"${tooExpensive ? ' disabled title="Не хватает рублей"' : ''}>${c.label}</button>`;
+          }).join('')}
         </div>`;
     } else {
       const choice = ev.choices.find(c=>c.key===answered.choiceKey);
@@ -351,7 +387,7 @@ function rodScreen(){
             <span class="era-badge">${ev.era}</span><span class="type-badge ${typeClass}">${typeLabel}</span>
             <h2 class="event-title">${ev.title}</h2>
             <p class="event-desc" style="opacity:0.75">Ваш выбор: ${choice ? choice.label : ''}</p>
-            ${turnSummaryHtml(rod.resources, rod.estate, rod, ev.turn)}
+            ${turnSummaryHtml(rod.resources, rod.estate, rod, ev.turn, 0)}
             ${waitNote}
             ${nextBtnHtml}
           </div>`;
@@ -378,7 +414,7 @@ function rodScreen(){
               ${mil ? `<div class="effect-line">Боевые холопы: выставлено ${mil.fielded}, погибло ${mil.lost}</div>` : ''}
               ${inc ? `<div class="effect-line ${inc.amount > 0 ? 'pos' : 'neg'}">${inc.amount > 0 ? 'Увеличение дохода' : 'Уменьшение дохода'}: ${inc.amount > 0 ? '+' : '-'}${Math.abs(inc.amount)} в ход</div>` : ''}
             </div>
-            ${turnSummaryHtml(rod.resources, rod.estate, rod, ev.turn)}
+            ${turnSummaryHtml(rod.resources, rod.estate, rod, ev.turn, mil && mil.equipmentCost ? mil.equipmentCost : 0)}
             ${waitNote}
             ${nextBtnHtml}
           </div>`;
@@ -520,7 +556,7 @@ function renderBuildConfirm(rod){
     lines.push(`<div class="effect-line ${v > 0 ? 'pos' : 'neg'}">${labels[k]} ${v > 0 ? '+' : ''}${v}</div>`);
   });
   if(b.perTurn && typeof b.perTurn.income === 'number') lines.push(`<div class="effect-line pos">Доход: +${b.perTurn.income} руб. в ход</div>`);
-  if(b.perTurn && typeof b.perTurn.fleeReduction === 'number') lines.push(`<div class="effect-line pos">Бегство крестьян: −${b.perTurn.fleeReduction} п. п.</div>`);
+  if(b.perTurn && typeof b.perTurn.fleeReduction === 'number') lines.push('<div class="effect-line pos">Бегство крестьян: меньше</div>');
   lines.push(`<div class="effect-line neg">Рубли −${price}</div>`);
   return `<div class="build-overlay" id="build-confirm-root">
     <div class="build-modal build-confirm">
@@ -594,6 +630,7 @@ function renderEstateOverlay(rod){
 }
 
 function bindRodScreen(){
+  startActTimer();
   document.getElementById('btn-leave').onclick = ()=>{ currentRod=null; render(); };
   const rod = state.rods[currentRod];
   const idx = Math.min(rod.progress || 0, state.events.length - 1);
@@ -785,6 +822,8 @@ function bindRodScreen(){
       const choice = ev.choices.find(c=>c.key===btn.dataset.key);
       // R7/R8: все формулы — по ресурсам на момент клика, до любых изменений этим выбором
       const res0 = rod.resources;
+      // ТЗ 23: вариант, требующий денег, недоступен при нехватке рублей (кнопка уже неактивна).
+      if(choiceMoneyCost(choice, rod, res0) > (res0.zoloto || 0)){ busy = false; return; }
       const druzhina = druzhinaOf(res0);
       const eff = choice.effect || {};
       // Сословный эффект — плоский объект: {slava/krestyane/zoloto, text?, income?} (см. vec estateMerge)
@@ -796,6 +835,8 @@ function bindRodScreen(){
       // Военный расчёт (R9): от душ до выбора, со снижениями потерь, накопленными родом ранее
       const reductions = rod.casualtyReduction ? [rod.casualtyReduction] : [];
       const mil = choice.military ? computeMilitary(res0.krestyane, choice.military, reductions) : null;
+      // ТЗ 23: 5 рублей за каждого выставленного холопа — расход на снаряжение войска.
+      const equipmentCost = mil ? militaryEquipmentCost(mil.fielded) : 0;
       // Флаги, которые ставит выбор, — сразу видны условным эффектам
       const flagsAfter = Object.assign({}, rod.flags);
       (choice.setFlags || []).forEach(flag => { flagsAfter[flag] = true; });
@@ -807,6 +848,7 @@ function bindRodScreen(){
         if(mil.lost) combined.krestyane = (combined.krestyane || 0) - mil.lost;
       }
       if(bribePaid) combined.zoloto = (combined.zoloto || 0) - bribePaid;
+      if(equipmentCost) combined.zoloto = (combined.zoloto || 0) - equipmentCost;
       // Снимок исхода (ТЗ 1.1): только чистые тексты и готовые числа, без формул и механики
       const ce = findConditionalEffect(choice, rodForConds);
       let estateText = estateObj && estateObj.text ? estateObj.text : '';
@@ -818,7 +860,7 @@ function bindRodScreen(){
           text: ce && ce.outcomeTextOverride ? ce.outcomeTextOverride : choice.outcomeText,
           estateText: estateText,
           deltas: combined,
-          ...(mil ? {military: {due: mil.due, fielded: mil.fielded, lost: mil.lost}} : {}),
+          ...(mil ? {military: {due: mil.due, fielded: mil.fielded, lost: mil.lost, equipmentCost}} : {}),
           ...(incSpec ? {income: {amount: incSpec.amount, ...(incSpec.until !== undefined ? {until: incSpec.until} : {})}} : {})
         }
       };
@@ -901,15 +943,19 @@ function bindRodScreen(){
       if(fromIdx < state.events.length - 1){
         // Переход — транзакция по progress: «Далее →» с двух устройств одного рода не пройдёт дважды
         const step = await dbTx(`rods/${rodName}/progress`, cur => (cur === null ? 0 : cur) === fromIdx ? fromIdx + 1 : undefined);
-        // Уход с assembly — не игровой ход: ни тика, ни наград
-        if(step.committed && !leavingAssembly){
+        if(step.committed){
+          // ТЗ 23: таймер 40 минут на блок — отсчёт от первого хода блока.
+          // Метка пишется один раз; уход с assembly тоже считается первым ходом блока.
+          await dbClaim(`rods/${rodName}/actStarts/${actOfIndex(fromIdx)}`, Date.now());
+          if(!leavingAssembly){
           const isNarrative = ev.type === 'narrative';
           // Мировой эффект narrative-события (стабильность/централизация) — один раз на всю игру (R14)
           if(isNarrative && ev.nationalEffect){
             if(await dbClaim('nationalEffects/' + ev.id, true)) await txNational(ev.nationalEffect);
           }
-          // Смерть Ивана Грозного: провал стабильности и централизации до конкретных значений (один раз на игру)
-          if(isNarrative && ev.nationalSet){
+          // ТЗ 23: абсолютные значения (опричнина, смерть Ивана) — один раз на всю игру,
+          // перекрывают накопленные прибавки большинства.
+          if(ev.nationalSet){
             if(await dbClaim('nationalEffects/' + ev.id, true)) await setNational(ev.nationalSet);
           }
           // Отмена прибавок к доходу (R6): снимаются до тика этого же хода, в БД — навсегда
@@ -933,6 +979,8 @@ function bindRodScreen(){
                 const mil = computeMilitary(res.krestyane, branch.military, rod.casualtyReduction ? [rod.casualtyReduction] : []);
                 for(const k in mil.scaleEffect) eff[k] = (eff[k] || 0) + mil.scaleEffect[k];
                 if(mil.lost) eff.krestyane = (eff.krestyane || 0) - mil.lost;
+                const equipmentCost = militaryEquipmentCost(mil.fielded);
+                if(equipmentCost) eff.zoloto = (eff.zoloto || 0) - equipmentCost;
               }
               res2 = applyEffect(res2, eff);
             }
@@ -947,6 +995,7 @@ function bindRodScreen(){
             if(await dbClaim(`rods/${rodName}/seenMilestones/${m.threshold}`, true)) reward += m.krestyane;
           }
           if(reward) await txResources(rodName, res => ({...res, krestyane: res.krestyane + reward}));
+          }
         }
       }
       busy = false;

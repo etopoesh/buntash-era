@@ -94,9 +94,9 @@
    "centralization": 4,
    "stability": 10,
    "expected": {
-    "pct": 4,
-    "loss": 8,
-    "soulsAfter": 192
+    "pct": 1,
+    "loss": 2,
+    "soulsAfter": 198
    }
   },
   {
@@ -105,9 +105,9 @@
    "centralization": 4,
    "stability": 10,
    "expected": {
-    "pct": 2,
-    "loss": 4,
-    "soulsAfter": 196
+    "pct": 0,
+    "loss": 0,
+    "soulsAfter": 200
    }
   },
   {
@@ -115,6 +115,17 @@
    "estate": "boyare",
    "centralization": 10,
    "stability": 4,
+   "expected": {
+    "pct": 1.5,
+    "loss": 3,
+    "soulsAfter": 197
+   }
+  },
+  {
+   "souls": 200,
+   "estate": "boyare",
+   "centralization": 10,
+   "stability": 2,
    "expected": {
     "pct": 3,
     "loss": 6,
@@ -123,24 +134,13 @@
   },
   {
    "souls": 200,
-   "estate": "boyare",
-   "centralization": 10,
-   "stability": 2,
-   "expected": {
-    "pct": 6,
-    "loss": 12,
-    "soulsAfter": 188
-   }
-  },
-  {
-   "souls": 200,
    "estate": "dvoryane",
    "centralization": 4,
    "stability": 2,
    "expected": {
-    "pct": 10,
-    "loss": 20,
-    "soulsAfter": 180
+    "pct": 4,
+    "loss": 8,
+    "soulsAfter": 192
    }
   },
   {
@@ -149,9 +149,9 @@
    "centralization": 4,
    "stability": 10,
    "expected": {
-    "pct": 2,
-    "loss": 3,
-    "soulsAfter": 122
+    "pct": 0,
+    "loss": 0,
+    "soulsAfter": 125
    }
   },
   {
@@ -160,9 +160,9 @@
    "centralization": 10,
    "stability": 4,
    "expected": {
-    "pct": 3,
-    "loss": 6,
-    "soulsAfter": 209
+    "pct": 1.5,
+    "loss": 3,
+    "soulsAfter": 212
    }
   },
   {
@@ -171,8 +171,8 @@
    "centralization": 4,
    "stability": 2,
    "expected": {
-    "pct": 10,
-    "loss": 2,
+    "pct": 4,
+    "loss": 1,
     "soulsAfter": 20
    }
   },
@@ -182,8 +182,8 @@
    "centralization": 0,
    "stability": 0,
    "expected": {
-    "pct": 10,
-    "loss": 2,
+    "pct": 4,
+    "loss": 1,
     "soulsAfter": 20
    }
   },
@@ -193,9 +193,9 @@
    "centralization": 5,
    "stability": 5,
    "expected": {
-    "pct": 0,
-    "loss": 0,
-    "soulsAfter": 200
+    "pct": 1.5,
+    "loss": 3,
+    "soulsAfter": 197
    }
   },
   {
@@ -215,9 +215,9 @@
    "centralization": 4,
    "stability": 10,
    "expected": {
-    "pct": 4,
-    "loss": 8,
-    "soulsAfter": 192
+    "pct": 1,
+    "loss": 2,
+    "soulsAfter": 198
    }
   }
  ],
@@ -249,9 +249,9 @@
    "expected": {
     "income": 230,
     "goldAfter": 530,
-    "flightPct": 10,
-    "flightLoss": 20,
-    "soulsAfter": 180
+    "flightPct": 4,
+    "flightLoss": 8,
+    "soulsAfter": 192
    }
   },
   {
@@ -265,11 +265,11 @@
     50
    ],
    "expected": {
-    "income": 170,
-    "goldAfter": 170,
-    "flightPct": 5,
-    "flightLoss": 8,
-    "soulsAfter": 142
+    "income": 35,
+    "goldAfter": 35,
+    "flightPct": 0.5,
+    "flightLoss": 1,
+    "soulsAfter": 149
    }
   },
   {
@@ -282,8 +282,8 @@
    "expected": {
     "income": 20,
     "goldAfter": 30,
-    "flightPct": 10,
-    "flightLoss": 2,
+    "flightPct": 4,
+    "flightLoss": 1,
     "soulsAfter": 20
    }
   }
@@ -1046,13 +1046,27 @@
   }
  ],
  "startState": {
-  "slava": 10,
+  "slava": "14 у бояр / 10 у дворян",
   "krestyane": 200,
-  "zoloto": 300,
-  "stability": 10,
-  "centralization": 10,
-  "sameForBothEstates": true
+  "zoloto": 100,
+  "stability": 8,
+  "centralization": 6,
+  "sameForBothEstates": false
  },
+ "equipment": [
+  {
+   "fielded": 10,
+   "expectedCost": 50
+  },
+  {
+   "fielded": 5,
+   "expectedCost": 25
+  },
+  {
+   "fielded": 0,
+   "expectedCost": 0
+  }
+ ],
  "eventsLint": {
   "expectedTotal": 64,
   "order": "gate; turns 1-25; gate; turns 26-42; gate; turns 43-60; gate(final)",

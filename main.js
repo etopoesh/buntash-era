@@ -1,10 +1,12 @@
 async function render(){
+  // Таймер блока живёт только на экране игрока; на остальных экранах останавливаем.
+  if(typeof stopActTimer === 'function') stopActTimer();
   const app = document.getElementById('app');
   if(!state){ app.innerHTML = '<div class="ui" style="color:#eee;text-align:center;padding:40px;">Загрузка...</div>'; return; }
 
   if (!state.globalResults) state.globalResults = {};
   if (!state.auctions) state.auctions = {};
-  if (!state.national) state.national = {stability: 10, centralization: 10};
+  if (!state.national) state.national = {stability: 8, centralization: 6};
   if (!state.majorityBonusResolved) state.majorityBonusResolved = {};
   if (!state.releasedAssemblies) state.releasedAssemblies = {};
   if (!state.rods) {
@@ -54,7 +56,7 @@ async function boot(){
       state.buildings = freshBuildings; // ТЗ 22: каталог построек (null — не загрузился)
       if (!state.globalResults) state.globalResults = {};
       if (!state.auctions) state.auctions = {};
-      if (!state.national) state.national = {stability: 10, centralization: 10};
+      if (!state.national) state.national = {stability: 8, centralization: 6};
       if (!state.majorityBonusResolved) state.majorityBonusResolved = {};
       if (!state.releasedAssemblies) state.releasedAssemblies = {};
 

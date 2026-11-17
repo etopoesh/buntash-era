@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * Симулятор баланса «Бунташного века».
+ * Симулятор баланса «Долгого века».
  * Отдельный скрипт для Node: к сайту не подключается, Firebase и сеть не использует.
  *
  * Запуск:   node tools/simulate.js [--seed N] [--events путь] [--out путь.csv]
@@ -27,7 +27,8 @@ function loadRules(file){
   const code = fs.readFileSync(file, 'utf8') +
     '\n;globalThis.__rules = {applyEffect, resolveEffect, computeEconomyTick, applyEconomyTick, pendingMilestones, SLAVA_MILESTONES,' +
     ' defaultResources, druzhinaOf, findConditionalEffect, getArrivalBonuses, arrivalBonusKey, initialState,' +
-    ' majorityOf, bribeCost, computeMilitary, activeIncomeMods, finalRanking, worldVerdict, roundHalfUp, fmtDelta, resourceEffect};';
+    ' majorityOf, bribeCost, computeMilitary, activeIncomeMods, finalRanking, worldVerdict, roundHalfUp, fmtDelta, resourceEffect,' +
+     ' militaryEquipmentCost, choiceMoneyCost, choiceMilitaryOf, actOfIndex};';
   const sandbox = {};
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox, {filename: file});
@@ -92,6 +93,8 @@ function runOne(strategyName, estate, seedForRun){
         const m = R.computeMilitary(res0.krestyane, choice.military, rod.casualtyReduction ? [rod.casualtyReduction] : []);
         for(const k in m.scaleEffect) eff[k] = (eff[k] || 0) + m.scaleEffect[k];
         if(m.lost) eff.krestyane = (eff.krestyane || 0) - m.lost;
+        const equipmentCost = R.militaryEquipmentCost(m.fielded);
+        if(equipmentCost) eff.zoloto = (eff.zoloto || 0) - equipmentCost;
       }
       resources = R.applyEffect(res0, eff);
       natEffect = choice.majorityBonus && choice.majorityBonus.nationalEffect || null;
@@ -122,11 +125,13 @@ function runOne(strategyName, estate, seedForRun){
         if(m.lost) eff.krestyane = (eff.krestyane || 0) - m.lost;
       }
       rod.resources = R.applyEffect(rod.resources, eff);
-      // Национальные показатели в narrative-событиях: прибавка (nationalEffect) или абсолютная установка (nationalSet)
+      // Национальные показатели в narrative-событиях: прибавка (nationalEffect)
       if(ev.nationalEffect) for(const k in ev.nationalEffect) national[k] = (national[k] || 0) + ev.nationalEffect[k];
-      if(ev.nationalSet) for(const k in ev.nationalSet) national[k] = ev.nationalSet[k];
     } else {
-      const options = ev.choices.filter(c => !c.requiresEstate || c.requiresEstate === estate);
+      const estateOk = ev.choices.filter(c => !c.requiresEstate || c.requiresEstate === estate);
+      // ТЗ 23: недоступные по деньгам варианты не выбираются; если все недоступны — оставляем как есть.
+      const affordable = estateOk.filter(c => R.choiceMoneyCost(c, rod, rod.resources) <= rod.resources.zoloto);
+      const options = affordable.length ? affordable : estateOk;
       let pick;
       if(strategy.score){
         let best = -Infinity;
@@ -139,6 +144,8 @@ function runOne(strategyName, estate, seedForRun){
       rod.flags = ev2.flags;
       if(ev2.natEffect) for(const k in ev2.natEffect) national[k] = (national[k] || 0) + ev2.natEffect[k];
     }
+    // ТЗ 23: абсолютные значения (опричнина, смерть Ивана) перекрывают накопленные прибавки
+    if(ev.nationalSet) for(const k in ev.nationalSet) national[k] = ev.nationalSet[k];
 
     // Тик экономики по текущим национальным показателям
     const tier = national.stability < 3 ? 'low' : (national.stability < 8 ? 'mid' : 'high');

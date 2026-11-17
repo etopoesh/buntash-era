@@ -77,6 +77,9 @@
     await stateRef.remove();
     const fresh = await waitFor(() => state && state.events && state.events.length > 0 && Object.keys(state.rods || {}).length === 0);
     check('тестовая ветка Firebase очищена', fresh);
+    check('ТЗ 23: стартовые показатели державы 6 / 8',
+      !!state.national && state.national.centralization === 6 && state.national.stability === 8,
+      JSON.stringify(state.national));
     return fresh;
   }
 
@@ -214,6 +217,12 @@
           check(`ворота ${ev.id}: переход`, false); return;
         }
         check(`ворота ${ev.id}: переход на следующий ход`, true);
+        if(idx === 0){
+          // actStarts пишется отдельной транзакцией сразу после progress — ждём её.
+          const timerOk = await waitFor(() => !!((rodOf(name).actStarts || {})['1']), 3000);
+          check('ТЗ 23: таймер блока запущен первым ходом', timerOk,
+            JSON.stringify(rodOf(name).actStarts || {}));
+        }
         continue;
       }
 
@@ -290,7 +299,8 @@
       if(!answered){
         const choices = $$('[data-key]');
         if(!choices.length){ check(`выбор ${ev.id}: кнопки вариантов`, false, label(ev)); return; }
-        const btn = choices[0];
+        // ТЗ 23: дорогие варианты могут быть неактивны — тест нажимает первый доступный.
+        const btn = choices.find(b => !b.disabled) || choices[0];
         const key = btn.dataset.key;
         const choice = (ev.choices || []).find(c => c.key === key);
         const before = Object.assign({}, r.resources);
@@ -306,6 +316,12 @@
         if(!rec){ check(`выбор ${ev.id}: ответ зафиксирован`, false, label(ev)); continue; }
         const choiceKey = typeof rec === 'string' ? rec : rec.choiceKey;
         check(`выбор ${ev.id}: записан один вариант`, got && choiceKey === key, label(ev));
+        if(rec.outcome && rec.outcome.military){
+          const m = rec.outcome.military;
+          check(`ТЗ 23: расходы на снаряжение ${ev.id}`,
+            m.equipmentCost === m.fielded * 5,
+            `выставлено ${m.fielded}, расход ${m.equipmentCost}`);
+        }
         if(got && typeof rec === 'object' && rec.outcome && rec.outcome.deltas){
           const d = rec.outcome.deltas;
           const exp = applyEffect(before, d);
@@ -393,6 +409,90 @@
     if(prev && next){ await idle(); next.click(); await sleep(120); check('GM: кнопки ←/→', true); }
     else check('GM: кнопки ←/→', false);
     role = 'rod';
+  }
+
+  // ---- проверки ТЗ 23 -------------------------------------------------------
+  async function tz23Checks(){
+    const ign = state.events.find(e => e.id === 'ign-23');
+    const oprich = state.events.find(e => e.id === 'oprich-16');
+    check('ТЗ 23: смерть Ивана задаёт централизацию 3 и стабильность 3',
+      !!ign && !!ign.nationalSet && ign.nationalSet.centralization === 3 && ign.nationalSet.stability === 3,
+      JSON.stringify(ign && ign.nationalSet));
+    check('ТЗ 23: в описании смерти Ивана нет «страшного»',
+      !!ign && !/страшн/i.test(ign.description || ''));
+    check('ТЗ 23: опричнина задаёт централизацию 10 и стабильность 5',
+      !!oprich && !!oprich.nationalSet && oprich.nationalSet.centralization === 10 && oprich.nationalSet.stability === 5,
+      JSON.stringify(oprich && oprich.nationalSet));
+    const finalEv = state.events[state.events.length - 1];
+    check('ТЗ 23: в финале игра названа «Долгий век»',
+      /Долгий век/.test(finalEv.description || '') && !/бунташн/i.test(finalEv.description || ''),
+      (finalEv.description || '').slice(-120));
+
+    const bs = (state.buildings.buildings || []).find(b => b.id === 'votchina');
+    check('ТЗ 23: покупка вотчины даёт +100 крестьян',
+      !!bs && !!bs.onBuild && bs.onBuild.krestyane === 100, JSON.stringify(bs && bs.onBuild));
+    const reductions = {};
+    (state.buildings.buildings || []).filter(b => b.category === 'order').forEach(b => {
+      reductions[b.id] = b.perTurn && b.perTurn.fleeReduction;
+    });
+    check('ТЗ 23: здания порядка дают 0,5 / 0,5 / 1',
+      reductions['court-hut'] === 0.5 && reductions['guardhouse'] === 0.5 && reductions['prison-hut'] === 1,
+      JSON.stringify(reductions));
+
+    const pct = (c, s, estate, reduction) => computeEconomyTick(
+      {krestyane: 200}, estate, {stability: s, centralization: c}, [], reduction
+    ).fleePct;
+    check('ТЗ 23: старт 6 / 8 — бегства нет', pct(6, 8, 'boyare') === 0);
+    check('ТЗ 23: централизация ниже 5 — дворяне +1, бояре −1 (минимум 0)',
+      pct(4, 10, 'dvoryane') === 1 && pct(4, 10, 'boyare') === 0);
+    check('ТЗ 23: стабильность 4–6 — 1,5, стабильность 3 и ниже — 3',
+      pct(10, 4, 'boyare') === 1.5 && pct(10, 2, 'boyare') === 3);
+    check('ТЗ 23: здания снижают процент, итог не ниже нуля',
+      pct(10, 4, 'boyare', 0.5) === 1 && pct(10, 2, 'boyare', 3) === 0);
+    check('ТЗ 23: знатность не уходит ниже нуля',
+      applyEffect({slava: 1, krestyane: 200, zoloto: 0}, {slava: -10}).slava === 0);
+    const mil = computeMilitary(200, {deploy: 1}, []);
+    check('ТЗ 23: снаряжение — 5 рублей за выставленного холопа',
+      mil.fielded === 10 && militaryEquipmentCost(mil.fielded) === 50,
+      `выставлено ${mil.fielded}, расход ${militaryEquipmentCost(mil.fielded)}`);
+
+    // Недоступная кнопка: у рода мало рублей, дорогой вариант должен быть неактивен.
+    const name = 'ТЕСТ-БОЯРЕ';
+    const rod = rodOf(name);
+    if(!rod){ check('ТЗ 23: род для проверки кнопок найден', false); return; }
+    const goldBefore = rod.resources.zoloto;
+    const progressBefore = rod.progress;
+    // Экран рода берёт событие из rod.progress, а не из state.currentIndex.
+    await dbSet(`rods/${name}/progress`, 1);
+    await txResources(name, res => ({...res, zoloto: 10}));
+    await waitFor(() => rodOf(name).resources.zoloto === 10 && rodOf(name).progress === 1);
+    currentRod = name; role = 'rod'; render();
+    await idle();
+    await sleep(60);
+    const choiceBtns = $$('[data-key]');
+    const disabledBtn = choiceBtns.find(b => b.disabled);
+    check('ТЗ 23: дорогой вариант при отрицательном балансе не нажимается',
+      !!disabledBtn && choiceBtns.some(b => !b.disabled),
+      `всего ${choiceBtns.length}, недоступных ${choiceBtns.filter(b => b.disabled).length}`);
+    if(disabledBtn){
+      const key = disabledBtn.dataset.key;
+      await idle();
+      disabledBtn.click();
+      await sleep(120);
+      check('ТЗ 23: неактивная кнопка не применяет эффект',
+        !(rodOf(name).answers || {})['sobor-1'], `вариант ${key}`);
+    }
+    await txResources(name, res => ({...res, zoloto: goldBefore}));
+    await dbSet(`rods/${name}/progress`, progressBefore);
+    await waitFor(() => rodOf(name).resources.zoloto === goldBefore && rodOf(name).progress === progressBefore);
+    currentRod = name; role = 'rod'; render();
+    await idle();
+    await sleep(60);
+
+    const timer = $('#act-timer');
+    check('ТЗ 23: таймер 40 минут в шапке игрока',
+      !!timer && /Блок 1 из 3/.test(timer.textContent) && /40:00/.test(timer.textContent),
+      timer ? timer.textContent : 'нет таймера');
   }
 
   // ---- автоматический подсчёт большинства на трёх родах ---------------------
@@ -499,6 +599,7 @@
       await ensureRod('ТЕСТ-ДВОРЯНЕ', 'dvoryane');
       await waitFor(() => Object.keys(state.rods || {}).length === 2);
       await gmButtons();
+      await tz23Checks();
       // один род покупает здания, другой пропускает окна — проверяем оба пути
       await playRod('ТЕСТ-БОЯРЕ', 'boyare', true);
       await playRod('ТЕСТ-ДВОРЯНЕ', 'dvoryane', false);

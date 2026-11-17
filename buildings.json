@@ -212,7 +212,7 @@
    "description": "Изба, где вотчинный суд разбирал дела крестьян.",
    "onBuild": {},
    "perTurn": {
-    "fleeReduction": 2
+    "fleeReduction": 0.5
    },
    "bonusText": [
     "Меньше крестьян бежит"
@@ -233,7 +233,7 @@
    "description": "Караульни, стрелецкие или псарные избы.",
    "onBuild": {},
    "perTurn": {
-    "fleeReduction": 2
+    "fleeReduction": 0.5
    },
    "bonusText": [
     "Меньше крестьян бежит"
@@ -254,7 +254,7 @@
    "description": "Тюремная изба для провинившихся крестьян.",
    "onBuild": {},
    "perTurn": {
-    "fleeReduction": 3
+    "fleeReduction": 1
    },
    "bonusText": [
     "Меньше крестьян бежит"
@@ -274,7 +274,7 @@
    "short": "Новые земли с крестьянами. Эффект единоразовый.",
    "description": "Покупка вотчины: земля с крестьянами. Эффект единоразовый, в усадьбе вотчина не отображается.",
    "onBuild": {
-    "krestyane": 50
+    "krestyane": 100
    },
    "perTurn": {},
    "bonusText": [
