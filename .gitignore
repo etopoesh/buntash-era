@@ -1,8 +1,6 @@
 # Локальные копии ТЗ и результаты разработки
 /tools/simulate-output.csv
-/plus/**/*.docx
-/plus/**/*.zip
-/plus/**/*.csv
+/plus/
 
 # Логи и временные файлы
 *.log

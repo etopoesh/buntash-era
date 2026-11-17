@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const EVENTS_PATH = path.join(__dirname, '..', 'events.json');
-const VEC_PATH = path.join(__dirname, '..', 'plus', 'тз20', 'verify-vectors.json');
+const VEC_PATH = path.join(__dirname, 'verify-vectors.json');
 
 const errors = [];
 const eventsDoc = JSON.parse(fs.readFileSync(EVENTS_PATH, 'utf8'));

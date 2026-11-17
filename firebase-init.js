@@ -39,7 +39,7 @@ async function loadEvents() {
 // возвращаем null: окно «Постройки» не показывается, игра идёт дальше без ошибок.
 async function loadBuildings() {
   try {
-    const response = await fetch('plus/тз22/buildings.json?v=' + DATA_VERSION);
+    const response = await fetch('buildings.json?v=' + DATA_VERSION);
     if (!response.ok) return null;
     return await response.json();
   } catch (e) {

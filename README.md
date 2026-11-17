@@ -21,7 +21,7 @@
 | `final-view.html` | Отдельный финальный экран |
 | `test.html` | Страница полного автоматического теста |
 | `events.json` | События, тексты и эффекты |
-| `plus/тз22/buildings.json` | Каталог построек |
+| `buildings.json` | Каталог построек |
 | `assets/buildings/` | Изображения построек |
 | `state.js` | Правила, расчёты, транзакции Firebase, итоги |
 | `main.js` | Запуск, подписка на Firebase, переходы между ходами |
@@ -31,7 +31,7 @@
 | `style.css` | Стили |
 | `tools/e2e.js` | Полный браузерный тест |
 | `tools/lint-events.js` | Проверка целостности `events.json` |
-| `plus/тз20/verify-vectors.json` | Эталонные значения для линтера |
+| `tools/verify-vectors.json` | Эталонные значения для линтера |
 
 ## Запуск
 
