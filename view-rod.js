@@ -50,9 +50,9 @@ function closeBuildDetail(){
 function turnSummaryHtml(resources, estate, rod, turn){
   const t = computeEconomyTick(resources, estate, state.national, activeIncomeMods(rod, turn), fleeReductionOf(rod));
   const lines = [];
-  if(t.fleeCentralPct) lines.push(`Бегство из-за низкой централизации: −${t.fleeCentralPct}%`);
-  if(t.fleeStabilityPct) lines.push(`Бегство из-за низкой стабильности: −${t.fleeStabilityPct}%`);
-  if(t.fleeCentralPct || t.fleeStabilityPct) lines.push(t.krestyaneDelta < 0 ? `Крестьяне: ≈ −${-t.krestyaneDelta}` : 'Крестьяне: ≈ 0');
+  if(t.fleeCentralPct) lines.push('Бегство из-за низкой централизации:');
+  if(t.fleeStabilityPct) lines.push('Бегство из-за низкой стабильности:');
+  if(t.fleeCentralPct || t.fleeStabilityPct) lines.push(t.krestyaneDelta < 0 ? `Крестьяне: −${-t.krestyaneDelta}` : 'Крестьяне: 0');
   lines.push(`Рубли: +${t.zolotoDelta}`);
   const rewards = pendingMilestones(currentRodObject(), resources.slava)
     .map(m => `<div class="effect-line pos">Знатность: вам жалуют землю с крестьянами, +${m.krestyane}</div>`).join('');
