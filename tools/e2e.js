@@ -368,12 +368,14 @@
     await idle();
     await sleep(60);
     check('GM: панель организатора открывается', document.getElementById('app').innerText.includes('Панель организатора'));
-    const acts = $$('.tl-act');
-    check('GM: лента событий разбита на три акта', acts.length === 3, `найдено ${acts.length}`);
-    const actCounts = acts.map(a => a.querySelectorAll('.tl-item').length);
-    check('GM: акты заполнены ходами', actCounts.every(c => c > 0), actCounts.join(' / '));
+    check('GM: лента — одна линия без деления на акты',
+      $$('.tl-act').length === 0 && !!$('.timeline'), `актов: ${$$('.tl-act').length}`);
+    const items = $$('.tl-item[data-jump]');
+    check('GM: в ленте все ходы', items.length === state.events.length,
+      `${items.length}/${state.events.length}`);
     const timelineText = $('.timeline')?.innerText || '';
-    check('GM: в шапке только сокращённые названия',
+    check('GM: подписи ходов — системные id латиницей',
+      timelineText.includes('assembly-start') && timelineText.includes('assembly-final') &&
       !timelineText.includes('Второй поход на Казань') && !timelineText.includes('Очный собор:'),
       timelineText.slice(0, 120));
     const sortBtns = $$('.sort-tabs button');

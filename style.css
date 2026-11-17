@@ -211,23 +211,13 @@
     background:var(--seal); color:var(--parchment); border-color:var(--seal);
   }
 
-  /* Шкала событий у ведущего: три акта, каждая строка прокручивается отдельно */
+  /* Шкала событий у ведущего: одна линия с горизонтальной прокруткой */
   .timeline{
-    display:flex; flex-direction:column; gap:6px; padding:8px 4px 10px;
+    display:flex; gap:10px; overflow-x:auto; padding:10px 4px 14px;
     margin-bottom:10px;
   }
-  .tl-act{ display:flex; align-items:center; gap:10px; }
-  .tl-act-label{
-    flex:0 0 68px; text-align:right;
-    font:600 11px/1.2 'Segoe UI',Arial,sans-serif; color:var(--gold-light);
-    letter-spacing:0.04em;
-  }
-  .tl-act-items{
-    display:flex; gap:10px; flex:1 1 auto; min-width:0; overflow-x:auto;
-    padding-bottom:5px;
-  }
   .tl-item{
-    flex:0 0 auto; min-width:92px; max-width:112px; text-align:center; cursor:pointer;
+    flex:0 0 auto; min-width:82px; text-align:center; cursor:pointer;
     font-family:'Segoe UI',Arial,sans-serif; font-size:11px; color:var(--parchment-dark);
     padding-bottom:5px; border-bottom:2px solid transparent;
   }
