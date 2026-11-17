@@ -128,7 +128,7 @@
    "description": "В большой вотчине был свой приказчик, контора и приказная изба, где велись книги, описи, переписка. Это был аппарат управления огромным хозяйством.",
    "onBuild": {},
    "perTurn": {
-    "income": null
+    "income": 15
    },
    "bonusText": [
     "Больше рублей в ход"
@@ -138,32 +138,28 @@
    "showInEstate": true,
    "image": "assets/buildings/prikaz-yard.png",
    "maxCount": 1,
-   "balanceTodo": [
-    "income"
-   ]
+   "balanceTodo": []
   },
   {
    "id": "brewery",
    "category": "income",
-   "name": "Пивоварня",
+   "name": "Маслобойня",
    "price": 120,
-   "short": "Собственный пивной промысел приносит рубли каждый ход.",
-   "description": "Пивоварня при усадьбе.",
+   "short": "Собственный масляный промысел приносит рубли каждый ход.",
+   "description": "Маслобойня при усадьбе.",
    "onBuild": {},
    "perTurn": {
-    "income": null
+    "income": 20
    },
    "bonusText": [
     "Больше рублей в ход"
    ],
-   "emoji": "🍺",
+   "emoji": "🧈",
    "oneTime": false,
    "showInEstate": true,
    "image": "assets/buildings/brewery.png",
    "maxCount": 1,
-   "balanceTodo": [
-    "income"
-   ]
+   "balanceTodo": []
   },
   {
    "id": "ironworks",
@@ -174,7 +170,7 @@
    "description": "Железный завод.",
    "onBuild": {},
    "perTurn": {
-    "income": null
+    "income": 40
    },
    "bonusText": [
     "Больше рублей в ход"
@@ -184,9 +180,7 @@
    "showInEstate": true,
    "image": "assets/buildings/ironworks.png",
    "maxCount": 1,
-   "balanceTodo": [
-    "income"
-   ]
+   "balanceTodo": []
   },
   {
    "id": "cloth-works",
@@ -197,7 +191,7 @@
    "description": "Собственное ткачество для нужд двора и прислуги.",
    "onBuild": {},
    "perTurn": {
-    "income": null
+    "income": 30
    },
    "bonusText": [
     "Больше рублей в ход"
@@ -207,9 +201,7 @@
    "showInEstate": true,
    "image": "assets/buildings/cloth-works.png",
    "maxCount": 1,
-   "balanceTodo": [
-    "income"
-   ]
+   "balanceTodo": []
   },
   {
    "id": "court-hut",
@@ -220,7 +212,7 @@
    "description": "Изба, где вотчинный суд разбирал дела крестьян.",
    "onBuild": {},
    "perTurn": {
-    "fleeReduction": null
+    "fleeReduction": 2
    },
    "bonusText": [
     "Меньше крестьян бежит"
@@ -230,9 +222,7 @@
    "showInEstate": true,
    "image": "assets/buildings/court-hut.png",
    "maxCount": 1,
-   "balanceTodo": [
-    "fleeReduction"
-   ]
+   "balanceTodo": []
   },
   {
    "id": "guardhouse",
@@ -243,7 +233,7 @@
    "description": "Караульни, стрелецкие или псарные избы.",
    "onBuild": {},
    "perTurn": {
-    "fleeReduction": null
+    "fleeReduction": 2
    },
    "bonusText": [
     "Меньше крестьян бежит"
@@ -253,9 +243,7 @@
    "showInEstate": true,
    "image": "assets/buildings/guardhouse.png",
    "maxCount": 1,
-   "balanceTodo": [
-    "fleeReduction"
-   ]
+   "balanceTodo": []
   },
   {
    "id": "prison-hut",
@@ -266,7 +254,7 @@
    "description": "Тюремная изба для провинившихся крестьян.",
    "onBuild": {},
    "perTurn": {
-    "fleeReduction": null
+    "fleeReduction": 3
    },
    "bonusText": [
     "Меньше крестьян бежит"
@@ -276,9 +264,7 @@
    "showInEstate": true,
    "image": "assets/buildings/prison-hut.png",
    "maxCount": 1,
-   "balanceTodo": [
-    "fleeReduction"
-   ]
+   "balanceTodo": []
   },
   {
    "id": "votchina",
@@ -288,23 +274,18 @@
    "short": "Новые земли с крестьянами. Эффект единоразовый.",
    "description": "Покупка вотчины: земля с крестьянами. Эффект единоразовый, в усадьбе вотчина не отображается.",
    "onBuild": {
-    "krestyane": null,
-    "zoloto": null
+    "krestyane": 50
    },
    "perTurn": {},
    "bonusText": [
-    "Крестьяне (единоразово)",
-    "Рубли (единоразово)"
+    "Крестьяне (единоразово)"
    ],
    "emoji": "🌾",
    "oneTime": true,
    "showInEstate": false,
    "image": "assets/buildings/votchina.png",
    "maxCount": null,
-   "balanceTodo": [
-    "krestyane",
-    "zoloto"
-   ]
+   "balanceTodo": []
   }
  ]
 }
