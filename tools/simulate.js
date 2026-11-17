@@ -122,6 +122,9 @@ function runOne(strategyName, estate, seedForRun){
         if(m.lost) eff.krestyane = (eff.krestyane || 0) - m.lost;
       }
       rod.resources = R.applyEffect(rod.resources, eff);
+      // Национальные показатели в narrative-событиях: прибавка (nationalEffect) или абсолютная установка (nationalSet)
+      if(ev.nationalEffect) for(const k in ev.nationalEffect) national[k] = (national[k] || 0) + ev.nationalEffect[k];
+      if(ev.nationalSet) for(const k in ev.nationalSet) national[k] = ev.nationalSet[k];
     } else {
       const options = ev.choices.filter(c => !c.requiresEstate || c.requiresEstate === estate);
       let pick;

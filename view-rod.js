@@ -908,6 +908,10 @@ function bindRodScreen(){
           if(isNarrative && ev.nationalEffect){
             if(await dbClaim('nationalEffects/' + ev.id, true)) await txNational(ev.nationalEffect);
           }
+          // Смерть Ивана Грозного: провал стабильности и централизации до конкретных значений (один раз на игру)
+          if(isNarrative && ev.nationalSet){
+            if(await dbClaim('nationalEffects/' + ev.id, true)) await setNational(ev.nationalSet);
+          }
           // Отмена прибавок к доходу (R6): снимаются до тика этого же хода, в БД — навсегда
           if(isNarrative && ev.incomeEnd){
             const ends = Array.isArray(ev.incomeEnd) ? ev.incomeEnd : [ev.incomeEnd];
