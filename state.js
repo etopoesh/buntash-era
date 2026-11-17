@@ -447,8 +447,10 @@ async function resolveMajorityBonus(ev, opts){
     // Автоматический подсчёт (без force) выполняется только когда ответили все
     if(!force && answeredCount < rodNames.length) return false;
     const majorityKey = majorityOf(ev, answeredOf);
-    // Метка подсчёта ставится транзакцией «только если ещё нет»: эффект применяется ровно один раз (R14)
-    const claimed = await dbClaim('majorityBonusResolved/' + ev.id, {majorityKey});
+    // Метка подсчёта ставится транзакцией «только если ещё нет»: эффект применяется ровно один раз (R14).
+    // Firebase удаляет поля со значением null — при отсутствии большинства пишем 'none', иначе метка не сохранится.
+    const claimed = await dbClaim('majorityBonusResolved/' + ev.id,
+      {majorityKey: majorityKey === null ? 'none' : majorityKey});
     if(!claimed) return false;
     if(majorityKey === null) return true; // большинства нет — мировых эффектов не будет
     const choice = ev.choices.find(c => c.key === majorityKey);

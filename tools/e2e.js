@@ -40,6 +40,24 @@
   // Firebase-слушатель обновляет state раньше, чем обработчик клика сбрасывает busy.
   // Клик во время busy игнорируется — это защита игры от двойных нажатий, в тесте её надо уважать.
   const idle = () => waitFor(() => busy === false, 5000);
+  // После remove()/массовых записей Firebase может прислать запоздавший старый снимок.
+  // Ждём, пока ключевые поля перестанут меняться, чтобы проверки не ловили переходное состояние.
+  const settle = async (quiet = 250, timeout = 6000) => {
+    const snap = () => JSON.stringify({
+      rods: Object.keys((state && state.rods) || {}).sort(),
+      national: state && state.national,
+      mb: state && state.majorityBonusResolved
+    });
+    let prev = snap(), last = Date.now();
+    const t0 = Date.now();
+    while(Date.now() - t0 < timeout){
+      await sleep(50);
+      const cur = snap();
+      if(cur !== prev){ prev = cur; last = Date.now(); }
+      else if(Date.now() - last >= quiet) return true;
+    }
+    return false;
+  };
 
   async function clickAndWait(sel, pred, what){
     await idle();
@@ -367,6 +385,95 @@
     role = 'rod';
   }
 
+  // ---- автоматический подсчёт большинства на трёх родах ---------------------
+  // В живой игре каждый род голосует на своём устройстве, а ORGANIZATOR (role=gm)
+  // получает обновление Firebase и сам подводит итог — без нажатия «Огласить итоги».
+  // Проверяем именно этот путь: 2:1 применяет nationalEffect победителя, 1:1:1 — ничего.
+  async function majorityAuto(){
+    await stateRef.remove();
+    await waitFor(() => state && Object.keys(state.rods || {}).length === 0);
+    await settle();
+    const names = ['МБ-1', 'МБ-2', 'МБ-3'];
+    // Повторяем создание: запоздавший снимок может на время убрать род из локального state.
+    for(let attempt = 0; attempt < 3; attempt++){
+      for(const n of names) if(!rodOf(n)) await ensureRod(n, 'boyare');
+      if(await waitFor(() => names.every(n => !!rodOf(n)), 3000)) break;
+      await sleep(300);
+    }
+    await settle();
+    const rodsReady = names.every(n => !!rodOf(n));
+    check('большинство: созданы три рода', rodsReady,
+      names.map(n => `${n}:${!!rodOf(n)}`).join(', '));
+
+    await setNational({stability: 10, centralization: 10});
+    await waitFor(() => state.national && state.national.centralization === 10 && state.national.stability === 10);
+    // Включаем роль организатора: авто-подсчёт в main.js работает только в ней.
+    role = 'gm';
+    render();
+    await idle();
+
+    const evWin = state.events.find(e => e.id === 'kazan-2');
+    const winKey = 'kazan-2-1';   // majorityBonus: centralization +1
+    const loseKey = 'kazan-2-3';  // majorityBonus: centralization -1
+    const winNat = evWin.choices.find(c => c.key === winKey).majorityBonus.nationalEffect;
+    const loseNat = evWin.choices.find(c => c.key === loseKey).majorityBonus.nationalEffect;
+    check('большинство: событие с национальным эффектом найдено',
+      !!evWin && !!winNat && !!loseNat, `kazan-2 → ${JSON.stringify(winNat)} / ${JSON.stringify(loseNat)}`);
+
+    const baseC = state.national.centralization;
+    const baseS = state.national.stability;
+    // Первые два голоса — по одному за разных кандидатов: большинства нет.
+    await dbSet(`rods/${names[0]}/answers/kazan-2`, {choiceKey: winKey});
+    await waitFor(() => !!rodOf(names[0]).answers['kazan-2']);
+    await dbSet(`rods/${names[1]}/answers/kazan-2`, {choiceKey: loseKey});
+    await waitFor(() => !!rodOf(names[1]).answers['kazan-2']);
+    await sleep(200);
+    check('большинство: при 1:1 эффект не применяется (ждём третьего рода)',
+      !state.majorityBonusResolved['kazan-2'] && state.national.centralization === baseC,
+      `централизация ${state.national.centralization}, метка ${JSON.stringify(state.majorityBonusResolved['kazan-2'])}`);
+
+    // Третий голос создаёт большинство 2:1 — итог должен подвестись САМ.
+    await dbSet(`rods/${names[2]}/answers/kazan-2`, {choiceKey: winKey});
+    const autoOk = await waitFor(() =>
+      !!(state.majorityBonusResolved || {})['kazan-2'] && state.national.centralization === baseC + winNat.centralization,
+      6000);
+    check('большинство: авто-подсчёт сработал без нажатия «Огласить итоги»', autoOk,
+      `метка ${JSON.stringify(state.majorityBonusResolved['kazan-2'])}, централизация ${state.national.centralization}`);
+    check('большинство: победивший вариант зафиксирован',
+      (state.majorityBonusResolved['kazan-2'] || {}).majorityKey === winKey,
+      `ожд. ${winKey}, факт ${(state.majorityBonusResolved['kazan-2'] || {}).majorityKey}`);
+    check('большинство: применён эффект победителя, а не меньшинства',
+      state.national.centralization === baseC + winNat.centralization &&
+      state.national.centralization !== baseC + loseNat.centralization,
+      `centralization ${baseC} → ${state.national.centralization}; победитель ${winNat.centralization}, меньшинство ${loseNat.centralization}`);
+    check('большинство: чужие показатели не тронуты', state.national.stability === baseS,
+      `стабильность ${baseS} → ${state.national.stability}`);
+
+    // Повторный подсчёт не должен удвоить эффект.
+    const beforeRepeat = state.national.centralization;
+    await resolveMajorityBonus(evWin);
+    await sleep(150);
+    check('большинство: повторный подсчёт не применяет эффект дважды',
+      state.national.centralization === beforeRepeat,
+      `было ${beforeRepeat}, стало ${state.national.centralization}`);
+
+    // Равенство 1:1:1 — большинства нет, национальные показатели не меняются.
+    const evTie = state.events.find(e => e.id === 'sudebnik-4');
+    const tieKeys = evTie.choices.slice(0, 3).map(c => c.key);
+    const baseC2 = state.national.centralization;
+    const baseS2 = state.national.stability;
+    for(let i = 0; i < 3; i++) await dbSet(`rods/${names[i]}/answers/sudebnik-4`, {choiceKey: tieKeys[i]});
+    const tieOk = await waitFor(() => !!(state.majorityBonusResolved || {})['sudebnik-4'], 6000);
+    check('большинство: при 1:1:1 итог подведён, но большинства нет',
+      tieOk && (state.majorityBonusResolved['sudebnik-4'] || {}).majorityKey === 'none',
+      `метка ${JSON.stringify(state.majorityBonusResolved['sudebnik-4'])}`);
+    check('большинство: при равенстве национальные показатели не изменились',
+      state.national.centralization === baseC2 && state.national.stability === baseS2,
+      `centralization ${baseC2} → ${state.national.centralization}, stability ${baseS2} → ${state.national.stability}`);
+
+    role = 'rod';
+  }
+
   // ---- запуск ---------------------------------------------------------------
   async function run(){
     if(running) return;
@@ -387,6 +494,8 @@
       check('итог: оба рода дошли до финала', r1 && r2 && r1.progress === finalIdx && r2.progress === finalIdx,
         r1 && r2 ? `${r1.progress}/${finalIdx}, ${r2.progress}/${finalIdx}` : 'нет рода');
       check('итог: рейтинг и итоги по родам считаются', typeof finalRanking === 'function' && typeof finalBestRod === 'function');
+      // Отдельный блок: три рода и автоматический подсчёт большинства.
+      await majorityAuto();
     } catch(e){
       check('непредвиденная ошибка теста', false, String(e && e.stack || e));
     } finally {
@@ -401,6 +510,20 @@
   }
 
   window.__E2E_RUN = run;
-  const start = async () => { for(let i=0;i<200 && !(state && state.events && state.events.length); i++) await sleep(50); await run(); };
+  window.__E2E_MAJORITY = majorityAuto;
+  const start = async () => {
+    for(let i=0;i<200 && !(state && state.events && state.events.length); i++) await sleep(50);
+    if(new URLSearchParams(location.search).get('only') === 'majority'){
+      running = true;
+      flush();
+      try { await majorityAuto(); }
+      catch(e){ check('непредвиденная ошибка теста большинства', false, String(e && e.stack || e)); }
+      finally {
+        running = false;
+        window.__E2E_RESULT = {total: results.length, failed: results.filter(r=>!r.ok), ok: results.every(r=>r.ok)};
+        flush();
+      }
+    } else await run();
+  };
   start();
 })();
