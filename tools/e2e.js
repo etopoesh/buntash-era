@@ -299,8 +299,12 @@
       if(!answered){
         const choices = $$('[data-key]');
         if(!choices.length){ check(`выбор ${ev.id}: кнопки вариантов`, false, label(ev)); return; }
+        // Все варианты заблокированы — ход нельзя пройти (регрессия правила «уход в долг»).
+        const enabled = choices.filter(b => !b.disabled);
+        if(!enabled.length){ check(`выбор ${ev.id}: есть доступный вариант`, false, label(ev)); return; }
+        check(`выбор ${ev.id}: есть доступный вариант`, true, label(ev));
         // ТЗ 23: дорогие варианты могут быть неактивны — тест нажимает первый доступный.
-        const btn = choices.find(b => !b.disabled) || choices[0];
+        const btn = enabled[0];
         const key = btn.dataset.key;
         const choice = (ev.choices || []).find(c => c.key === key);
         const before = Object.assign({}, r.resources);

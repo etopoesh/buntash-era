@@ -15,7 +15,7 @@ function initialState(){
 function defaultResources(estate){
   // Стартовые ресурсы: бояре начинают со знатностью 14, остальные сословия — как раньше.
   // rod.estate сохраняется и используется отдельно (например, requiresEstate у части выборов), но на старте больше не влияет.
-  return {slava: estate === 'boyare' ? 14 : 10, krestyane: 200, zoloto: 100};
+  return {slava: estate === 'boyare' ? 14 : 10, krestyane: 200, zoloto: 250};
 }
 
 let state = null;
@@ -491,6 +491,16 @@ function minChoiceMoneyCost(choices, rod, resources, turn){
   const list = (choices || []).filter(c => choiceAvailable(c, rod));
   if(!list.length) return 0;
   return Math.min.apply(null, list.map(c => choiceMoneyCost(c, rod, resources, turn)));
+}
+
+// Блокировка варианта из-за нехватки рублей. Если все варианты дороже казны,
+// самый дешёвый остаётся доступным — игрок уходит в долг, а не застревает на ходе.
+function choiceTooExpensive(choice, choices, rod, resources, turn){
+  const cost = choiceMoneyCost(choice, rod, resources, turn);
+  const minCost = minChoiceMoneyCost(choices, rod, resources, turn);
+  if(resources.zoloto < 0) return cost !== minCost;
+  if(cost <= 0 || cost <= resources.zoloto) return false;
+  return cost !== minCost || minCost <= resources.zoloto;
 }
 
 // Три блока игры: 0–25, 26–43, 44–63. Нужен для таймера 40 минут в шапке игрока.

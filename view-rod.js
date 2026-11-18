@@ -371,18 +371,11 @@ function rodScreen(){
           <p class="event-desc">${ev.description}</p>
           ${rodCardLine}
           ${ev.choices.some(c=>c.druzhinaTiers) ? `<p class="event-desc">Ваши боевые холопы: <strong>${druzhinaOf(rod.resources)}</strong></p>` : ''}
-          ${(()=>{
-            const costs = availableChoices.map(c => choiceMoneyCost(c, rod, rod.resources, ev.turn));
-            const minCost = costs.length ? Math.min(...costs) : 0;
-            return availableChoices.map((c, i) => {
-              const cost = costs[i];
-              // Отрицательный баланс: доступен только самый дешёвый вариант — это долг.
-              const tooExpensive = rod.resources.zoloto < 0
-                ? cost !== minCost
-                : (cost > 0 && cost > rod.resources.zoloto);
-              return `<button class="choice-btn" data-key="${c.key}"${tooExpensive ? ' disabled title="Не хватает рублей"' : ''}>${c.label}</button>`;
-            }).join('');
-          })()}
+          ${availableChoices.map(c => {
+            // Если все варианты дороже казны, самый дешёвый остаётся доступным — уход в долг.
+            const tooExpensive = choiceTooExpensive(c, availableChoices, rod, rod.resources, ev.turn);
+            return `<button class="choice-btn" data-key="${c.key}"${tooExpensive ? ' disabled title="Не хватает рублей"' : ''}>${c.label}</button>`;
+          }).join('')}
         </div>`;
     } else {
       const choice = ev.choices.find(c=>c.key===answered.choiceKey);
@@ -831,13 +824,8 @@ function bindRodScreen(){
       // R7/R8: все формулы — по ресурсам на момент клика, до любых изменений этим выбором
       const res0 = rod.resources;
       // ТЗ 23: вариант, требующий денег, недоступен при нехватке рублей (кнопка уже неактивна).
-      // Бесплатный вариант доступен даже при отрицательном балансе.
-      const requiredMoney = choiceMoneyCost(choice, rod, res0, ev.turn);
-      const minMoney = minChoiceMoneyCost(ev.choices, rod, res0, ev.turn);
-      // В минусе можно выбрать только самый дешёвый вариант и уйти в ещё больший долг.
-      if(res0.zoloto < 0
-        ? requiredMoney !== minMoney
-        : (requiredMoney > 0 && requiredMoney > res0.zoloto)){
+      // В минусе или когда все варианты дороже казны, доступен только самый дешёвый — долг.
+      if(choiceTooExpensive(choice, ev.choices, rod, res0, ev.turn)){
         busy = false;
         return;
       }
